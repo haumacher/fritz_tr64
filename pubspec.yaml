@@ -1,0 +1,15 @@
+name: flutter_tr64
+description: A Dart library for accessing Fritz!Box routers via the TR-064 protocol (SOAP over HTTP with content-level digest authentication).
+version: 0.1.0
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  http: ^1.2.0
+  xml: ^6.5.0
+  crypto: ^3.0.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^5.0.0
