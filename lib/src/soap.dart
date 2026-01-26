@@ -163,37 +163,9 @@ SoapResponse parseSoapResponse(String xml) {
       ? body.first
       : envelope.findAllElements('s:Body').first;
 
-  final fault = bodyElement.findAllElements('Fault').toList();
-  if (fault.isEmpty) {
-    // Also check with namespace prefix
-    fault.addAll(bodyElement.findAllElements('s:Fault'));
-  }
-  if (fault.isNotEmpty) {
-    final faultElement = fault.first;
-    final faultCode =
-        _getElementText(faultElement, 'faultcode') ?? 'Unknown';
-    final faultString =
-        _getElementText(faultElement, 'faultstring') ?? 'Unknown error';
-    final detail = _getElementText(faultElement, 'detail');
-    throw SoapFaultException(
-      faultCode: faultCode,
-      faultString: faultString,
-      detail: detail,
-    );
-  }
-
-  // Extract body arguments - find the action response element
-  final arguments = <String, String>{};
-  final actionResponse = bodyElement.children
-      .whereType<XmlElement>()
-      .firstOrNull;
-  if (actionResponse != null) {
-    for (final child in actionResponse.children.whereType<XmlElement>()) {
-      arguments[child.localName] = child.innerText;
-    }
-  }
-
-  // Extract challenge info from header
+  // Extract challenge info from header first — the Fritz!Box includes the
+  // challenge even in fault responses (e.g. the InitChallenge step returns a
+  // 503 "Auth. failed" fault together with the nonce/realm in the header).
   ChallengeInfo? challenge;
   final headers = envelope.findAllElements('Header',
       namespace: 'http://schemas.xmlsoap.org/soap/envelope/');
@@ -219,6 +191,43 @@ SoapResponse parseSoapResponse(String xml) {
       if (nonce != null && realm != null) {
         challenge = ChallengeInfo(nonce: nonce, realm: realm, status: status);
       }
+    }
+  }
+
+  // Check for SOAP fault
+  final fault = bodyElement.findAllElements('Fault').toList();
+  if (fault.isEmpty) {
+    // Also check with namespace prefix
+    fault.addAll(bodyElement.findAllElements('s:Fault'));
+  }
+  if (fault.isNotEmpty) {
+    // If a challenge was included alongside the fault (InitChallenge flow),
+    // return it instead of throwing so the caller can proceed with auth.
+    if (challenge != null) {
+      return SoapResponse(arguments: const {}, challenge: challenge);
+    }
+
+    final faultElement = fault.first;
+    final faultCode =
+        _getElementText(faultElement, 'faultcode') ?? 'Unknown';
+    final faultString =
+        _getElementText(faultElement, 'faultstring') ?? 'Unknown error';
+    final detail = _getElementText(faultElement, 'detail');
+    throw SoapFaultException(
+      faultCode: faultCode,
+      faultString: faultString,
+      detail: detail,
+    );
+  }
+
+  // Extract body arguments - find the action response element
+  final arguments = <String, String>{};
+  final actionResponse = bodyElement.children
+      .whereType<XmlElement>()
+      .firstOrNull;
+  if (actionResponse != null) {
+    for (final child in actionResponse.children.whereType<XmlElement>()) {
+      arguments[child.localName] = child.innerText;
     }
   }
 
