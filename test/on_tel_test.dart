@@ -732,10 +732,10 @@ void main() {
 
       final d = await service.getDeflection(0);
       expect(d.enable, isTrue);
-      expect(d.type, 'fromNumber');
+      expect(d.type, DeflectionType.fromNumber);
       expect(d.number, '12345');
       expect(d.deflectionToNumber, '98765');
-      expect(d.mode, 'eImmediately');
+      expect(d.mode, DeflectionMode.immediately);
       expect(d.outgoing, '0');
       expect(d.phonebookId, isNull);
     });
@@ -759,7 +759,7 @@ void main() {
 
       final d = await service.getDeflection(1);
       expect(d.phonebookId, 2);
-      expect(d.type, 'fromPB');
+      expect(d.type, DeflectionType.fromPB);
     });
 
     test('getDeflections returns XML string', () async {
@@ -916,6 +916,84 @@ void main() {
     });
   });
 
+  group('DeflectionType', () {
+    test('tryParse returns matching enum value for all types', () {
+      expect(DeflectionType.tryParse('fon1'), DeflectionType.fon1);
+      expect(DeflectionType.tryParse('fon2'), DeflectionType.fon2);
+      expect(DeflectionType.tryParse('fon3'), DeflectionType.fon3);
+      expect(DeflectionType.tryParse('fon4'), DeflectionType.fon4);
+      expect(DeflectionType.tryParse('fromAll'), DeflectionType.fromAll);
+      expect(DeflectionType.tryParse('fromAnonymous'), DeflectionType.fromAnonymous);
+      expect(DeflectionType.tryParse('fromNotInPhonebook'), DeflectionType.fromNotInPhonebook);
+      expect(DeflectionType.tryParse('fromNumber'), DeflectionType.fromNumber);
+      expect(DeflectionType.tryParse('fromPB'), DeflectionType.fromPB);
+      expect(DeflectionType.tryParse('fromVIP'), DeflectionType.fromVIP);
+      expect(DeflectionType.tryParse('toAny'), DeflectionType.toAny);
+      expect(DeflectionType.tryParse('toMSN'), DeflectionType.toMSN);
+      expect(DeflectionType.tryParse('toPOTS'), DeflectionType.toPOTS);
+      expect(DeflectionType.tryParse('toVoIP'), DeflectionType.toVoIP);
+      expect(DeflectionType.tryParse('unknown'), DeflectionType.unknown);
+      expect(DeflectionType.tryParse('fromNotVIP'), DeflectionType.fromNotVIP);
+    });
+
+    test('tryParse returns null for unknown or empty values', () {
+      expect(DeflectionType.tryParse(''), isNull);
+      expect(DeflectionType.tryParse('invalid'), isNull);
+    });
+
+    test('toString returns spec value', () {
+      expect(DeflectionType.fromNumber.toString(), 'fromNumber');
+      expect(DeflectionType.fromNotInPhonebook.toString(), 'fromNotInPhonebook');
+    });
+  });
+
+  group('DeflectionMode', () {
+    test('tryParse returns matching enum value for all modes', () {
+      expect(DeflectionMode.tryParse('eBellBlockade'), DeflectionMode.bellBlockade);
+      expect(DeflectionMode.tryParse('eBusy'), DeflectionMode.busy);
+      expect(DeflectionMode.tryParse('eDelayed'), DeflectionMode.delayed);
+      expect(DeflectionMode.tryParse('eDelayedOrBusy'), DeflectionMode.delayedOrBusy);
+      expect(DeflectionMode.tryParse('eDirectCall'), DeflectionMode.directCall);
+      expect(DeflectionMode.tryParse('eImmediately'), DeflectionMode.immediately);
+      expect(DeflectionMode.tryParse('eLongDelayed'), DeflectionMode.longDelayed);
+      expect(DeflectionMode.tryParse('eNoSignal'), DeflectionMode.noSignal);
+      expect(DeflectionMode.tryParse('eOff'), DeflectionMode.off);
+      expect(DeflectionMode.tryParse('eParallelCall'), DeflectionMode.parallelCall);
+      expect(DeflectionMode.tryParse('eShortDelayed'), DeflectionMode.shortDelayed);
+      expect(DeflectionMode.tryParse('eUnknown'), DeflectionMode.unknown);
+      expect(DeflectionMode.tryParse('eVIP'), DeflectionMode.vip);
+    });
+
+    test('tryParse returns null for unknown or empty values', () {
+      expect(DeflectionMode.tryParse(''), isNull);
+      expect(DeflectionMode.tryParse('invalid'), isNull);
+    });
+
+    test('toString returns spec value', () {
+      expect(DeflectionMode.immediately.toString(), 'eImmediately');
+      expect(DeflectionMode.busy.toString(), 'eBusy');
+    });
+  });
+
+  group('NumberType', () {
+    test('tryParse returns matching enum value for all types', () {
+      expect(NumberType.tryParse('pots'), NumberType.pots);
+      expect(NumberType.tryParse('isdn'), NumberType.isdn);
+      expect(NumberType.tryParse('sip'), NumberType.sip);
+      expect(NumberType.tryParse('umts'), NumberType.umts);
+    });
+
+    test('tryParse returns null for unknown or empty values', () {
+      expect(NumberType.tryParse(''), isNull);
+      expect(NumberType.tryParse('dect'), isNull);
+    });
+
+    test('toString returns spec value', () {
+      expect(NumberType.sip.toString(), 'sip');
+      expect(NumberType.pots.toString(), 'pots');
+    });
+  });
+
   group('CallListEntry', () {
     test('toString includes key fields', () {
       final entry = CallListEntry(
@@ -924,7 +1002,7 @@ void main() {
         called: '0123456789',
         caller: '98765',
         name: 'Max Mustermann',
-        numbertype: 'sip',
+        numbertype: NumberType.sip,
         device: 'Mobilteil 1',
         port: 10,
         date: '23.09.11 08:13',
@@ -942,7 +1020,7 @@ void main() {
         called: '',
         caller: '',
         name: '',
-        numbertype: '',
+        numbertype: null,
         device: '',
         port: 0,
         date: '',

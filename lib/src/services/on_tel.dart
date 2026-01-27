@@ -266,8 +266,8 @@ class CallListEntry {
   /// Name of the other party (from phonebook or caller ID).
   final String name;
 
-  /// Number type (pots, isdn, sip, umts, or empty).
-  final String numbertype;
+  /// Number type (pots, isdn, sip, umts).
+  final NumberType? numbertype;
 
   /// Name of the telephone device used.
   final String device;
@@ -314,7 +314,7 @@ List<CallListEntry> _parseCallListXml(String xml) {
       called: _childText(call, 'Called') ?? '',
       caller: _childText(call, 'Caller') ?? '',
       name: _childText(call, 'Name') ?? '',
-      numbertype: _childText(call, 'Numbertype') ?? '',
+      numbertype: NumberType.tryParse(_childText(call, 'Numbertype') ?? ''),
       device: _childText(call, 'Device') ?? '',
       port: int.tryParse(_childText(call, 'Port') ?? '') ?? 0,
       date: _childText(call, 'Date') ?? '',
@@ -375,13 +375,169 @@ class DectHandsetInfo {
   String toString() => 'DectHandsetInfo($handsetName, phonebook=$phonebookId)';
 }
 
+/// Deflection type from the spec's TypeEnum (section 3.2).
+enum DeflectionType {
+  /// Calls to phone 1.
+  fon1('fon1'),
+
+  /// Calls to phone 2.
+  fon2('fon2'),
+
+  /// Calls to phone 3.
+  fon3('fon3'),
+
+  /// Calls to phone 4.
+  fon4('fon4'),
+
+  /// All incoming calls.
+  fromAll('fromAll'),
+
+  /// Anonymous callers.
+  fromAnonymous('fromAnonymous'),
+
+  /// Callers not in the phonebook.
+  fromNotInPhonebook('fromNotInPhonebook'),
+
+  /// A specific phone number.
+  fromNumber('fromNumber'),
+
+  /// Callers from a phonebook.
+  fromPB('fromPB'),
+
+  /// VIP callers.
+  fromVIP('fromVIP'),
+
+  /// Any outgoing call.
+  toAny('toAny'),
+
+  /// Outgoing calls to a specific MSN.
+  toMSN('toMSN'),
+
+  /// Outgoing calls via POTS.
+  toPOTS('toPOTS'),
+
+  /// Outgoing calls via VoIP.
+  toVoIP('toVoIP'),
+
+  /// Unknown type.
+  unknown('unknown'),
+
+  /// Callers not marked as VIP (obsolete).
+  fromNotVIP('fromNotVIP');
+
+  final String _value;
+  const DeflectionType(this._value);
+
+  /// Parse a type string returned by the Fritz!Box.
+  ///
+  /// Returns `null` for unknown or empty values.
+  static DeflectionType? tryParse(String value) {
+    for (final t in values) {
+      if (t._value == value) return t;
+    }
+    return null;
+  }
+
+  @override
+  String toString() => _value;
+}
+
+/// Deflection mode from the spec's ModeEnum (section 3.1).
+enum DeflectionMode {
+  /// Bell blockade – suppress ringing.
+  bellBlockade('eBellBlockade'),
+
+  /// Deflect when busy.
+  busy('eBusy'),
+
+  /// Deflect after a delay.
+  delayed('eDelayed'),
+
+  /// Deflect when busy or after a delay.
+  delayedOrBusy('eDelayedOrBusy'),
+
+  /// Direct call (hot line).
+  directCall('eDirectCall'),
+
+  /// Deflect immediately.
+  immediately('eImmediately'),
+
+  /// Deflect after a long delay.
+  longDelayed('eLongDelayed'),
+
+  /// No signal – phone does not ring.
+  noSignal('eNoSignal'),
+
+  /// Deflection is off.
+  off('eOff'),
+
+  /// Parallel call.
+  parallelCall('eParallelCall'),
+
+  /// Deflect after a short delay.
+  shortDelayed('eShortDelayed'),
+
+  /// Unknown mode.
+  unknown('eUnknown'),
+
+  /// VIP mode.
+  vip('eVIP');
+
+  final String _value;
+  const DeflectionMode(this._value);
+
+  /// Parse a mode string returned by the Fritz!Box.
+  ///
+  /// Returns `null` for unknown or empty values.
+  static DeflectionMode? tryParse(String value) {
+    for (final m in values) {
+      if (m._value == value) return m;
+    }
+    return null;
+  }
+
+  @override
+  String toString() => _value;
+}
+
+/// Number type of a call list entry (spec table 69).
+enum NumberType {
+  /// Plain old telephone service.
+  pots('pots'),
+
+  /// ISDN connection.
+  isdn('isdn'),
+
+  /// SIP (VoIP) connection.
+  sip('sip'),
+
+  /// Mobile (UMTS/GSM) connection.
+  umts('umts');
+
+  final String _value;
+  const NumberType(this._value);
+
+  /// Parse a number-type string from the call list XML.
+  ///
+  /// Returns `null` for unknown or empty values.
+  static NumberType? tryParse(String value) {
+    for (final t in values) {
+      if (t._value == value) return t;
+    }
+    return null;
+  }
+
+  @override
+  String toString() => _value;
+}
+
 /// A call deflection rule.
 class Deflection {
   final bool enable;
-  final String type;
+  final DeflectionType? type;
   final String number;
   final String deflectionToNumber;
-  final String mode;
+  final DeflectionMode? mode;
   final String outgoing;
   final int? phonebookId;
 
@@ -399,10 +555,10 @@ class Deflection {
     final pbIdStr = args['NewPhonebookID'];
     return Deflection(
       enable: args['NewEnable'] == '1',
-      type: args['NewType'] ?? '',
+      type: DeflectionType.tryParse(args['NewType'] ?? ''),
       number: args['NewNumber'] ?? '',
       deflectionToNumber: args['NewDeflectionToNumber'] ?? '',
-      mode: args['NewMode'] ?? '',
+      mode: DeflectionMode.tryParse(args['NewMode'] ?? ''),
       outgoing: args['NewOutgoing'] ?? '',
       phonebookId:
           pbIdStr != null && pbIdStr.isNotEmpty ? int.tryParse(pbIdStr) : null,
