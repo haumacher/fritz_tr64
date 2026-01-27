@@ -1,4 +1,4 @@
-import '../device_description.dart';
+import '../client.dart';
 import '../service.dart';
 
 /// Result of DeviceInfo:GetInfo action.
@@ -61,22 +61,6 @@ class DeviceInfoService extends Tr64Service {
     required super.callAction,
   });
 
-  /// Create from a [ServiceDescription] found in the device description.
-  factory DeviceInfoService.fromDescription(
-    ServiceDescription description,
-    Future<Map<String, String>> Function(
-      String serviceType,
-      String controlUrl,
-      String actionName,
-      Map<String, String> arguments,
-    ) callAction,
-  ) {
-    return DeviceInfoService(
-      description: description,
-      callAction: callAction,
-    );
-  }
-
   /// Get device information.
   Future<DeviceInfo> getInfo() async {
     final result = await call('GetInfo');
@@ -93,5 +77,28 @@ class DeviceInfoService extends Tr64Service {
   Future<String> getDeviceLog() async {
     final result = await call('GetDeviceLog');
     return result['NewDeviceLog'] ?? '';
+  }
+}
+
+/// Extension on [Tr64Client] to access the DeviceInfo service.
+extension DeviceInfoClientExtension on Tr64Client {
+  /// Create a [DeviceInfoService] for querying device information.
+  ///
+  /// Requires [Tr64Client.connect] to have been called first.
+  DeviceInfoService? deviceInfo() {
+    if (description == null) return null;
+    final desc = description!.findByType(
+      'urn:dslforum-org:service:DeviceInfo:1',
+    );
+    if (desc == null) return null;
+    return DeviceInfoService(
+      description: desc,
+      callAction: (serviceType, controlUrl, actionName, arguments) => call(
+        serviceType: serviceType,
+        controlUrl: controlUrl,
+        actionName: actionName,
+        arguments: arguments,
+      ),
+    );
   }
 }

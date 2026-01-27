@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'auth.dart';
 import 'device_description.dart';
 import 'service.dart';
-import 'services/device_info.dart';
 import 'soap.dart';
 
 /// Main entry point for the TR-064 protocol.
@@ -141,21 +140,6 @@ class Tr64Client {
     }
 
     return authResult.arguments;
-  }
-
-  /// Create a [DeviceInfoService] for querying device information.
-  ///
-  /// Requires [connect] to have been called first.
-  DeviceInfoService? deviceInfo() {
-    if (_description == null) return null;
-    final desc = _description!.findByType(
-      'urn:dslforum-org:service:DeviceInfo:1',
-    );
-    if (desc == null) return null;
-    return DeviceInfoService(
-      description: desc,
-      callAction: _callAction,
-    );
   }
 
   /// Find a service by type and create a generic [Tr64Service] wrapper.

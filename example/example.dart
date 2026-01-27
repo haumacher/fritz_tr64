@@ -59,6 +59,18 @@ void main() async {
       print('Uptime: ${info.upTime} seconds');
     }
 
+    // Use the OnTel service to list phonebooks
+    final onTel = client.onTel();
+    if (onTel != null) {
+      final phonebookIds = await onTel.getPhonebookList();
+      final totalEntries = await onTel.getNumberOfEntries();
+      print('Phonebooks: $phonebookIds ($totalEntries total entries)');
+      for (final id in phonebookIds) {
+        final phonebook = await onTel.getPhonebook(id);
+        print('  [$id] ${phonebook.name} (${phonebook.url})');
+      }
+    }
+
     // Or call any service action generically
     final result = await client.call(
       serviceType: 'urn:dslforum-org:service:DeviceInfo:1',
