@@ -34,6 +34,58 @@ enum DDNSMode {
   String toString() => _value;
 }
 
+/// DDNS update status for IPv4 or IPv6.
+enum DDNSStatus {
+  /// DDNS is offline.
+  offline('offline'),
+
+  /// Checking the current IP address.
+  checking('checking'),
+
+  /// Sending an update to the DDNS provider.
+  updating('updating'),
+
+  /// The DDNS record has been updated.
+  updated('updated'),
+
+  /// Verifying the DDNS update.
+  verifying('verifying'),
+
+  /// The DDNS update completed successfully.
+  complete('complete'),
+
+  /// A new IP address was detected.
+  newAddress('new-address'),
+
+  /// The DDNS account is disabled at the provider.
+  accountDisabled('account-disabled'),
+
+  /// No internet connection available.
+  internetNotConnected('internet-not-connected'),
+
+  /// Status is undefined.
+  undefined('undefined');
+
+  final String _value;
+  const DDNSStatus(this._value);
+
+  /// Parse a status string returned by the Fritz!Box.
+  ///
+  /// Returns `null` for unknown or empty values.
+  /// Accepts both "new address" (IPv4) and "new-address" (IPv6).
+  static DDNSStatus? tryParse(String value) {
+    for (final s in values) {
+      if (s._value == value) return s;
+    }
+    // The spec uses "new address" (space) for StatusIPv4.
+    if (value == 'new address') return newAddress;
+    return null;
+  }
+
+  @override
+  String toString() => _value;
+}
+
 /// Result of X_AVM-DE_RemoteAccess:GetInfo action.
 class RemoteAccessInfo {
   /// Whether remote access is enabled.
@@ -96,11 +148,11 @@ class DDNSInfo {
   /// IPv6 server address for DDNS updates.
   final String serverIPv6;
 
-  /// Current IPv4 DDNS status (e.g. complete, offline, updating).
-  final String statusIPv4;
+  /// Current IPv4 DDNS status.
+  final DDNSStatus? statusIPv4;
 
   /// Current IPv6 DDNS status.
-  final String statusIPv6;
+  final DDNSStatus? statusIPv6;
 
   /// The DDNS update URL.
   final String updateURL;
@@ -129,8 +181,8 @@ class DDNSInfo {
       providerName: args['NewProviderName'] ?? '',
       serverIPv4: args['NewServerIPv4'] ?? '',
       serverIPv6: args['NewServerIPv6'] ?? '',
-      statusIPv4: args['NewStatusIPv4'] ?? '',
-      statusIPv6: args['NewStatusIPv6'] ?? '',
+      statusIPv4: DDNSStatus.tryParse(args['NewStatusIPv4'] ?? ''),
+      statusIPv6: DDNSStatus.tryParse(args['NewStatusIPv6'] ?? ''),
       updateURL: args['NewUpdateURL'] ?? '',
       username: args['NewUsername'] ?? '',
     );

@@ -35,6 +35,38 @@ void main() {
     });
   });
 
+  group('DDNSStatus', () {
+    test('tryParse returns matching enum value', () {
+      expect(DDNSStatus.tryParse('offline'), DDNSStatus.offline);
+      expect(DDNSStatus.tryParse('checking'), DDNSStatus.checking);
+      expect(DDNSStatus.tryParse('updating'), DDNSStatus.updating);
+      expect(DDNSStatus.tryParse('updated'), DDNSStatus.updated);
+      expect(DDNSStatus.tryParse('verifying'), DDNSStatus.verifying);
+      expect(DDNSStatus.tryParse('complete'), DDNSStatus.complete);
+      expect(DDNSStatus.tryParse('new-address'), DDNSStatus.newAddress);
+      expect(DDNSStatus.tryParse('account-disabled'), DDNSStatus.accountDisabled);
+      expect(DDNSStatus.tryParse('internet-not-connected'), DDNSStatus.internetNotConnected);
+      expect(DDNSStatus.tryParse('undefined'), DDNSStatus.undefined);
+    });
+
+    test('tryParse accepts "new address" with space (IPv4 variant)', () {
+      expect(DDNSStatus.tryParse('new address'), DDNSStatus.newAddress);
+    });
+
+    test('tryParse returns null for unknown or empty', () {
+      expect(DDNSStatus.tryParse('unknown_value'), isNull);
+      expect(DDNSStatus.tryParse(''), isNull);
+    });
+
+    test('toString returns spec value', () {
+      expect(DDNSStatus.offline.toString(), 'offline');
+      expect(DDNSStatus.complete.toString(), 'complete');
+      expect(DDNSStatus.newAddress.toString(), 'new-address');
+      expect(DDNSStatus.accountDisabled.toString(), 'account-disabled');
+      expect(DDNSStatus.internetNotConnected.toString(), 'internet-not-connected');
+    });
+  });
+
   group('RemoteAccessInfo', () {
     test('fromArguments parses all fields', () {
       final info = RemoteAccessInfo.fromArguments({
@@ -112,8 +144,8 @@ void main() {
       expect(info.providerName, 'DynDNS');
       expect(info.serverIPv4, 'update.dyndns.org');
       expect(info.serverIPv6, 'update6.dyndns.org');
-      expect(info.statusIPv4, 'complete');
-      expect(info.statusIPv6, 'offline');
+      expect(info.statusIPv4, DDNSStatus.complete);
+      expect(info.statusIPv6, DDNSStatus.offline);
       expect(info.updateURL, contains('update.dyndns.org'));
       expect(info.username, 'ddnsuser');
     });
@@ -127,8 +159,8 @@ void main() {
       expect(info.providerName, '');
       expect(info.serverIPv4, '');
       expect(info.serverIPv6, '');
-      expect(info.statusIPv4, '');
-      expect(info.statusIPv6, '');
+      expect(info.statusIPv4, isNull);
+      expect(info.statusIPv6, isNull);
       expect(info.updateURL, '');
       expect(info.username, '');
     });
@@ -148,8 +180,8 @@ void main() {
         providerName: 'DynDNS',
         serverIPv4: '',
         serverIPv6: '',
-        statusIPv4: '',
-        statusIPv6: '',
+        statusIPv4: null,
+        statusIPv6: null,
         updateURL: '',
         username: '',
       );
@@ -165,8 +197,8 @@ void main() {
         providerName: '',
         serverIPv4: '',
         serverIPv6: '',
-        statusIPv4: '',
-        statusIPv6: '',
+        statusIPv4: null,
+        statusIPv6: null,
         updateURL: '',
         username: '',
       );
@@ -278,7 +310,7 @@ void main() {
       expect(info.enabled, isTrue);
       expect(info.mode, DDNSMode.v4);
       expect(info.providerName, 'DynDNS');
-      expect(info.statusIPv4, 'complete');
+      expect(info.statusIPv4, DDNSStatus.complete);
     });
 
     test('getDDNSProviderList returns raw XML', () async {
