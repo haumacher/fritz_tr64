@@ -86,6 +86,40 @@ enum DDNSStatus {
   String toString() => _value;
 }
 
+/// State of the Let's Encrypt certificate.
+enum LetsEncryptState {
+  /// Let's Encrypt or MyFRITZ is disabled.
+  notUsed('not_used'),
+
+  /// Creating certificate.
+  getting('get'),
+
+  /// The certificate is valid.
+  valid('valid'),
+
+  /// The certificate is invalid.
+  invalid('invalid'),
+
+  /// Unknown error.
+  unknown('unknown');
+
+  final String _value;
+  const LetsEncryptState(this._value);
+
+  /// Parse a state string returned by the Fritz!Box.
+  ///
+  /// Returns `null` for unrecognised or empty values.
+  static LetsEncryptState? tryParse(String value) {
+    for (final s in values) {
+      if (s._value == value) return s;
+    }
+    return null;
+  }
+
+  @override
+  String toString() => _value;
+}
+
 /// Result of X_AVM-DE_RemoteAccess:GetInfo action.
 class RemoteAccessInfo {
   /// Whether remote access is enabled.
@@ -101,9 +135,7 @@ class RemoteAccessInfo {
   final bool letsEncryptEnabled;
 
   /// State of the Let's Encrypt certificate.
-  ///
-  /// Known values: not_used, get, valid, invalid, unknown.
-  final String letsEncryptState;
+  final LetsEncryptState? letsEncryptState;
 
   RemoteAccessInfo({
     required this.enabled,
@@ -119,7 +151,7 @@ class RemoteAccessInfo {
       port: int.tryParse(args['NewPort'] ?? '') ?? 0,
       username: args['NewUsername'] ?? '',
       letsEncryptEnabled: args['NewLetsEncryptEnabled'] == '1',
-      letsEncryptState: args['NewLetsEncryptState'] ?? 'unknown',
+      letsEncryptState: LetsEncryptState.tryParse(args['NewLetsEncryptState'] ?? ''),
     );
   }
 

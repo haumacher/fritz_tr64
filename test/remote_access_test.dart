@@ -67,6 +67,29 @@ void main() {
     });
   });
 
+  group('LetsEncryptState', () {
+    test('tryParse returns matching enum value', () {
+      expect(LetsEncryptState.tryParse('not_used'), LetsEncryptState.notUsed);
+      expect(LetsEncryptState.tryParse('get'), LetsEncryptState.getting);
+      expect(LetsEncryptState.tryParse('valid'), LetsEncryptState.valid);
+      expect(LetsEncryptState.tryParse('invalid'), LetsEncryptState.invalid);
+      expect(LetsEncryptState.tryParse('unknown'), LetsEncryptState.unknown);
+    });
+
+    test('tryParse returns null for unrecognised or empty', () {
+      expect(LetsEncryptState.tryParse('something_else'), isNull);
+      expect(LetsEncryptState.tryParse(''), isNull);
+    });
+
+    test('toString returns spec value', () {
+      expect(LetsEncryptState.notUsed.toString(), 'not_used');
+      expect(LetsEncryptState.getting.toString(), 'get');
+      expect(LetsEncryptState.valid.toString(), 'valid');
+      expect(LetsEncryptState.invalid.toString(), 'invalid');
+      expect(LetsEncryptState.unknown.toString(), 'unknown');
+    });
+  });
+
   group('RemoteAccessInfo', () {
     test('fromArguments parses all fields', () {
       final info = RemoteAccessInfo.fromArguments({
@@ -81,7 +104,7 @@ void main() {
       expect(info.port, 443);
       expect(info.username, 'admin');
       expect(info.letsEncryptEnabled, isTrue);
-      expect(info.letsEncryptState, 'valid');
+      expect(info.letsEncryptState, LetsEncryptState.valid);
     });
 
     test('fromArguments defaults for missing keys', () {
@@ -91,7 +114,7 @@ void main() {
       expect(info.port, 0);
       expect(info.username, '');
       expect(info.letsEncryptEnabled, isFalse);
-      expect(info.letsEncryptState, 'unknown');
+      expect(info.letsEncryptState, isNull);
     });
 
     test('fromArguments with disabled state', () {
@@ -107,7 +130,7 @@ void main() {
       expect(info.port, 8443);
       expect(info.username, 'user@example.com');
       expect(info.letsEncryptEnabled, isFalse);
-      expect(info.letsEncryptState, 'not_used');
+      expect(info.letsEncryptState, LetsEncryptState.notUsed);
     });
 
     test('toString includes key fields', () {
@@ -116,7 +139,7 @@ void main() {
         port: 443,
         username: 'admin',
         letsEncryptEnabled: true,
-        letsEncryptState: 'valid',
+        letsEncryptState: LetsEncryptState.valid,
       );
       expect(info.toString(),
           'RemoteAccessInfo(enabled=true, port=443, user=admin)');
@@ -240,7 +263,7 @@ void main() {
       expect(info.port, 443);
       expect(info.username, 'admin');
       expect(info.letsEncryptEnabled, isTrue);
-      expect(info.letsEncryptState, 'valid');
+      expect(info.letsEncryptState, LetsEncryptState.valid);
     });
 
     test('setConfig sends correct arguments', () async {
