@@ -174,6 +174,20 @@ class OnlinePhonebookInfo {
   String toString() => 'OnlinePhonebookInfo($name, $url)';
 }
 
+/// Information about a DECT handset.
+class DectHandsetInfo {
+  final String handsetName;
+  final int phonebookId;
+
+  DectHandsetInfo({
+    required this.handsetName,
+    required this.phonebookId,
+  });
+
+  @override
+  String toString() => 'DectHandsetInfo($handsetName, phonebook=$phonebookId)';
+}
+
 /// TR-064 X_AVM-DE_OnTel service (contacts / phonebook).
 ///
 /// Service type: urn:dslforum-org:service:X_AVM-DE_OnTel:1
@@ -386,6 +400,35 @@ class OnTelService extends Tr64Service {
   Future<void> deleteByIndex(int index) async {
     await call('DeleteByIndex', {
       'NewIndex': index.toString(),
+    });
+  }
+
+  // -- DECT handsets --
+
+  /// Get a list of DECT handset IDs.
+  Future<List<String>> getDectHandsetList() async {
+    final result = await call('GetDECTHandsetList');
+    final csv = result['NewDectIDList'] ?? '';
+    if (csv.isEmpty) return [];
+    return csv.split(',').map((s) => s.trim()).toList();
+  }
+
+  /// Get information about a DECT handset.
+  Future<DectHandsetInfo> getDectHandsetInfo(String dectId) async {
+    final result = await call('GetDECTHandsetInfo', {
+      'NewDectID': dectId,
+    });
+    return DectHandsetInfo(
+      handsetName: result['NewHandsetName'] ?? '',
+      phonebookId: int.parse(result['NewPhonebookID'] ?? '0'),
+    );
+  }
+
+  /// Assign a phonebook to a DECT handset.
+  Future<void> setDectHandsetPhonebook(String dectId, int phonebookId) async {
+    await call('SetDECTHandsetPhonebook', {
+      'NewDectID': dectId,
+      'NewPhonebookID': phonebookId.toString(),
     });
   }
 }

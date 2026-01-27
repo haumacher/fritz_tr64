@@ -484,5 +484,62 @@ void main() {
 
       await service.deleteByIndex(4);
     });
+
+    test('getDectHandsetList parses comma-separated IDs', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetDECTHandsetList');
+          return {'NewDectIDList': '1,2,3'};
+        },
+      );
+
+      final ids = await service.getDectHandsetList();
+      expect(ids, ['1', '2', '3']);
+    });
+
+    test('getDectHandsetList returns empty list for empty string', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          return {'NewDectIDList': ''};
+        },
+      );
+
+      final ids = await service.getDectHandsetList();
+      expect(ids, isEmpty);
+    });
+
+    test('getDectHandsetInfo returns name and phonebookId', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetDECTHandsetInfo');
+          expect(arguments['NewDectID'], '1');
+          return {
+            'NewHandsetName': 'Mobilteil 1',
+            'NewPhonebookID': '0',
+          };
+        },
+      );
+
+      final info = await service.getDectHandsetInfo('1');
+      expect(info.handsetName, 'Mobilteil 1');
+      expect(info.phonebookId, 0);
+    });
+
+    test('setDectHandsetPhonebook passes dectId and phonebookId', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'SetDECTHandsetPhonebook');
+          expect(arguments['NewDectID'], '2');
+          expect(arguments['NewPhonebookID'], '1');
+          return {};
+        },
+      );
+
+      await service.setDectHandsetPhonebook('2', 1);
+    });
   });
 }
