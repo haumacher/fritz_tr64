@@ -37,11 +37,63 @@ enum SecondFactorState {
   }
 }
 
+/// A second-factor authentication method.
+///
+/// The Fritz!Box reports available methods as a comma-separated string.
+/// Known method types are `button` and `dtmf;<sequence>`.
+sealed class AuthMethod {
+  const AuthMethod();
+
+  /// Parse a comma-separated methods string into a list.
+  ///
+  /// Unknown methods are preserved as [AuthMethodUnknown].
+  static List<AuthMethod> parseAll(String methods) {
+    if (methods.isEmpty) return const [];
+    return methods.split(',').map((s) {
+      final trimmed = s.trim();
+      if (trimmed == 'button') return const AuthMethodButton();
+      if (trimmed.startsWith('dtmf;')) {
+        return AuthMethodDtmf(trimmed.substring(5));
+      }
+      return AuthMethodUnknown(trimmed);
+    }).toList();
+  }
+}
+
+/// Press any button on the device to authenticate.
+class AuthMethodButton extends AuthMethod {
+  const AuthMethodButton();
+
+  @override
+  String toString() => 'button';
+}
+
+/// Enter a DTMF sequence on a connected phone.
+class AuthMethodDtmf extends AuthMethod {
+  /// The DTMF sequence to enter (e.g. `*11234`).
+  final String sequence;
+
+  const AuthMethodDtmf(this.sequence);
+
+  @override
+  String toString() => 'dtmf;$sequence';
+}
+
+/// An unrecognised authentication method.
+class AuthMethodUnknown extends AuthMethod {
+  final String raw;
+
+  const AuthMethodUnknown(this.raw);
+
+  @override
+  String toString() => raw;
+}
+
 /// Result of X_AVM-DE_Auth:SetConfig action.
 class AuthConfigResult {
   final String token;
   final SecondFactorState state;
-  final String methods;
+  final List<AuthMethod> methods;
 
   AuthConfigResult({
     required this.token,
@@ -54,7 +106,7 @@ class AuthConfigResult {
       token: args['NewToken'] ?? '',
       state: SecondFactorState.tryParse(args['NewState'] ?? '') ??
           SecondFactorState.failure,
-      methods: args['NewMethods'] ?? '',
+      methods: AuthMethod.parseAll(args['NewMethods'] ?? ''),
     );
   }
 

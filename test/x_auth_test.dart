@@ -38,6 +38,45 @@ void main() {
     });
   });
 
+  group('AuthMethod', () {
+    test('parseAll parses button', () {
+      final methods = AuthMethod.parseAll('button');
+      expect(methods, hasLength(1));
+      expect(methods[0], isA<AuthMethodButton>());
+      expect(methods[0].toString(), 'button');
+    });
+
+    test('parseAll parses dtmf with sequence', () {
+      final methods = AuthMethod.parseAll('dtmf;*11234');
+      expect(methods, hasLength(1));
+      expect(methods[0], isA<AuthMethodDtmf>());
+      expect((methods[0] as AuthMethodDtmf).sequence, '*11234');
+      expect(methods[0].toString(), 'dtmf;*11234');
+    });
+
+    test('parseAll parses multiple comma-separated methods', () {
+      final methods = AuthMethod.parseAll('button, dtmf;*11234');
+      expect(methods, hasLength(2));
+      expect(methods[0], isA<AuthMethodButton>());
+      expect(methods[1], isA<AuthMethodDtmf>());
+      expect((methods[1] as AuthMethodDtmf).sequence, '*11234');
+    });
+
+    test('parseAll returns empty list for empty string', () {
+      final methods = AuthMethod.parseAll('');
+      expect(methods, isEmpty);
+    });
+
+    test('parseAll preserves unknown methods', () {
+      final methods = AuthMethod.parseAll('button, future_method');
+      expect(methods, hasLength(2));
+      expect(methods[0], isA<AuthMethodButton>());
+      expect(methods[1], isA<AuthMethodUnknown>());
+      expect((methods[1] as AuthMethodUnknown).raw, 'future_method');
+      expect(methods[1].toString(), 'future_method');
+    });
+  });
+
   group('AuthConfigResult', () {
     test('fromArguments parses all fields', () {
       final result = AuthConfigResult.fromArguments({
@@ -48,7 +87,21 @@ void main() {
 
       expect(result.token, '2C0A2110-30BA-444e-8B83-566BC3F19C80');
       expect(result.state, SecondFactorState.waitingforauth);
-      expect(result.methods, 'button');
+      expect(result.methods, hasLength(1));
+      expect(result.methods[0], isA<AuthMethodButton>());
+    });
+
+    test('fromArguments parses multiple methods', () {
+      final result = AuthConfigResult.fromArguments({
+        'NewToken': 'tok',
+        'NewState': 'waitingforauth',
+        'NewMethods': 'button,dtmf;*99',
+      });
+
+      expect(result.methods, hasLength(2));
+      expect(result.methods[0], isA<AuthMethodButton>());
+      expect(result.methods[1], isA<AuthMethodDtmf>());
+      expect((result.methods[1] as AuthMethodDtmf).sequence, '*99');
     });
 
     test('fromArguments defaults for missing keys', () {
@@ -56,7 +109,7 @@ void main() {
 
       expect(result.token, '');
       expect(result.state, SecondFactorState.failure);
-      expect(result.methods, '');
+      expect(result.methods, isEmpty);
     });
 
     test('fromArguments falls back to failure for unknown state', () {
@@ -71,10 +124,10 @@ void main() {
       final result = AuthConfigResult(
         token: 'abc',
         state: SecondFactorState.waitingforauth,
-        methods: 'button',
+        methods: [const AuthMethodButton()],
       );
       expect(result.toString(),
-          'AuthConfigResult(waitingforauth, methods=button)');
+          'AuthConfigResult(waitingforauth, methods=[button])');
     });
   });
 
@@ -166,7 +219,8 @@ void main() {
       final result = await service.setConfig('start');
       expect(result.token, '2C0A2110-30BA-444e-8B83-566BC3F19C80');
       expect(result.state, SecondFactorState.waitingforauth);
-      expect(result.methods, 'button');
+      expect(result.methods, hasLength(1));
+      expect(result.methods[0], isA<AuthMethodButton>());
     });
 
     test('setConfig stop returns stopped state', () async {
@@ -187,6 +241,7 @@ void main() {
       final result = await service.setConfig('stop');
       expect(result.state, SecondFactorState.stopped);
       expect(result.token, '');
+      expect(result.methods, isEmpty);
     });
 
     test('setConfig returns dtmf method', () async {
@@ -203,7 +258,9 @@ void main() {
       );
 
       final result = await service.setConfig('start');
-      expect(result.methods, 'dtmf;*11234');
+      expect(result.methods, hasLength(1));
+      expect(result.methods[0], isA<AuthMethodDtmf>());
+      expect((result.methods[0] as AuthMethodDtmf).sequence, '*11234');
       expect(result.state, SecondFactorState.waitingforauth);
     });
 
@@ -222,6 +279,7 @@ void main() {
 
       final result = await service.setConfig('start');
       expect(result.state, SecondFactorState.blocked);
+      expect(result.methods, isEmpty);
     });
   });
 }
