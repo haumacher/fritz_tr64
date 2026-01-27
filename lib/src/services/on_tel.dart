@@ -190,6 +190,19 @@ XmlElement? _findChild(XmlElement parent, String localName) {
   return null;
 }
 
+/// Parse a phonebook XML document into a list of [PhonebookEntry] objects.
+///
+/// The XML has the structure:
+/// `<phonebooks><phonebook><contact>...</contact></phonebook></phonebooks>`
+List<PhonebookEntry> _parsePhonebookXml(String xml) {
+  final document = XmlDocument.parse(xml);
+  final entries = <PhonebookEntry>[];
+  for (final contact in document.findAllElements('contact')) {
+    entries.add(PhonebookEntry.fromXml(contact.toXmlString()));
+  }
+  return entries;
+}
+
 String? _childText(XmlElement parent, String localName) {
   final el = _findChild(parent, localName);
   if (el == null) return null;
@@ -292,6 +305,7 @@ class OnTelService extends Tr64Service {
   OnTelService({
     required super.description,
     required super.callAction,
+    required super.fetchUrl,
   });
 
   /// Get the URL for the call list.
@@ -430,6 +444,17 @@ class OnTelService extends Tr64Service {
   Future<String> getCallBarringList() async {
     final result = await call('GetCallBarringList');
     return result['NewPhonebookURL'] ?? '';
+  }
+
+  /// Fetch and parse all call barring entries.
+  ///
+  /// Calls [getCallBarringList] to obtain the URL, fetches the XML,
+  /// and parses each `<contact>` element into a [PhonebookEntry].
+  Future<List<PhonebookEntry>> getCallBarringEntries() async {
+    final url = await getCallBarringList();
+    if (url.isEmpty) return [];
+    final body = await fetchUrl(url);
+    return _parsePhonebookXml(body);
   }
 
   /// Add or update a call barring entry.
@@ -579,6 +604,7 @@ extension OnTelClientExtension on Tr64Client {
         actionName: actionName,
         arguments: arguments,
       ),
+      fetchUrl: fetchUrl,
     );
   }
 }

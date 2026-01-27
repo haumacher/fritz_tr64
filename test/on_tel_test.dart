@@ -11,6 +11,8 @@ ServiceDescription _fakeDescription() {
   );
 }
 
+Future<String> _unusedFetchUrl(String url) async => '';
+
 const _contactXml = '''
 <contact>
   <category>1</category>
@@ -182,6 +184,7 @@ void main() {
     test('getPhonebookList parses comma-separated IDs', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetPhonebookList');
           return {'NewPhonebookList': '0,1,2'};
@@ -195,6 +198,7 @@ void main() {
     test('getPhonebookList returns empty list for empty string', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           return {'NewPhonebookList': ''};
         },
@@ -207,6 +211,7 @@ void main() {
     test('getPhonebookList handles single ID', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           return {'NewPhonebookList': '0'};
         },
@@ -219,6 +224,7 @@ void main() {
     test('getCallList returns URL', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetCallList');
           return {'NewCallListURL': 'http://fritz.box/calllist.lua'};
@@ -232,6 +238,7 @@ void main() {
     test('getPhonebook passes ID and returns Phonebook', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetPhonebook');
           expect(arguments['NewPhonebookID'], '1');
@@ -252,6 +259,7 @@ void main() {
     test('getNumberOfEntries returns count', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetNumberOfEntries');
           expect(arguments, isEmpty);
@@ -266,6 +274,7 @@ void main() {
     test('getPhonebookEntry passes IDs and returns PhonebookEntry', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetPhonebookEntry');
           expect(arguments['NewPhonebookID'], '0');
@@ -284,6 +293,7 @@ void main() {
         () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetPhonebookEntryUID');
           expect(arguments['NewPhonebookID'], '0');
@@ -300,6 +310,7 @@ void main() {
     test('addPhonebook passes name and optional extraId', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'AddPhonebook');
           expect(arguments['NewPhonebookName'], 'Work');
@@ -314,6 +325,7 @@ void main() {
     test('addPhonebook sends empty extraId when not provided', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(arguments['NewPhonebookExtraID'], '');
           return {};
@@ -326,6 +338,7 @@ void main() {
     test('deletePhonebook passes ID', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'DeletePhonebook');
           expect(arguments['NewPhonebookID'], '2');
@@ -343,6 +356,7 @@ void main() {
       );
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetPhonebookEntry');
           expect(arguments['NewPhonebookID'], '0');
@@ -363,6 +377,7 @@ void main() {
       );
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetPhonebookEntryUID');
           expect(arguments['NewPhonebookID'], '0');
@@ -378,6 +393,7 @@ void main() {
     test('deletePhonebookEntry passes IDs', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'DeletePhonebookEntry');
           expect(arguments['NewPhonebookID'], '0');
@@ -392,6 +408,7 @@ void main() {
     test('deletePhonebookEntryUID passes IDs', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'DeletePhonebookEntryUID');
           expect(arguments['NewPhonebookID'], '0');
@@ -406,6 +423,7 @@ void main() {
     test('getCallBarringEntry returns PhonebookEntry', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetCallBarringEntry');
           expect(arguments['NewPhonebookEntryID'], '5');
@@ -420,6 +438,7 @@ void main() {
     test('getCallBarringEntryByNum returns PhonebookEntry', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetCallBarringEntryByNum');
           expect(arguments['NewNumber'], '+491234567');
@@ -434,6 +453,7 @@ void main() {
     test('getCallBarringList returns URL', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetCallBarringList');
           return {'NewPhonebookURL': 'http://fritz.box/barring.xml'};
@@ -444,6 +464,62 @@ void main() {
       expect(url, 'http://fritz.box/barring.xml');
     });
 
+    test('getCallBarringEntries fetches and parses phonebook XML', () async {
+      const phonebookXml = '''
+<?xml version="1.0"?>
+<phonebooks>
+  <phonebook>
+    <contact>
+      <person><realName>Spam Caller</realName></person>
+      <telephony>
+        <number type="home">+49111</number>
+      </telephony>
+      <uniqueid>10</uniqueid>
+    </contact>
+    <contact>
+      <person><realName>Telemarketer</realName></person>
+      <telephony>
+        <number type="work">+49222</number>
+      </telephony>
+      <uniqueid>11</uniqueid>
+    </contact>
+  </phonebook>
+</phonebooks>''';
+
+      final service = OnTelService(
+        description: _fakeDescription(),
+        fetchUrl: (url) async {
+          expect(url, 'http://fritz.box/barring.xml');
+          return phonebookXml;
+        },
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetCallBarringList');
+          return {'NewPhonebookURL': 'http://fritz.box/barring.xml'};
+        },
+      );
+
+      final entries = await service.getCallBarringEntries();
+      expect(entries, hasLength(2));
+      expect(entries[0].name, 'Spam Caller');
+      expect(entries[0].uniqueId, 10);
+      expect(entries[0].numbers[0].number, '+49111');
+      expect(entries[1].name, 'Telemarketer');
+      expect(entries[1].uniqueId, 11);
+    });
+
+    test('getCallBarringEntries returns empty list for empty URL', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          return {'NewPhonebookURL': ''};
+        },
+      );
+
+      final entries = await service.getCallBarringEntries();
+      expect(entries, isEmpty);
+    });
+
     test('setCallBarringEntry passes entry XML and returns uniqueId', () async {
       final entry = PhonebookEntry(
         name: 'Blocked',
@@ -451,6 +527,7 @@ void main() {
       );
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetCallBarringEntry');
           expect(arguments['NewPhonebookEntryData'], entry.toXml());
@@ -465,6 +542,7 @@ void main() {
     test('deleteCallBarringEntryUID passes uniqueId', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'DeleteCallBarringEntryUID');
           expect(arguments['NewPhonebookEntryUniqueID'], '10');
@@ -478,6 +556,7 @@ void main() {
     test('getInfoByIndex returns OnlinePhonebookInfo', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetInfoByIndex');
           expect(arguments['NewIndex'], '1');
@@ -503,6 +582,7 @@ void main() {
     test('setEnableByIndex passes index and enable flag', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetEnableByIndex');
           expect(arguments['NewIndex'], '2');
@@ -517,6 +597,7 @@ void main() {
     test('setConfigByIndex passes all parameters', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetConfigByIndex');
           expect(arguments['NewIndex'], '3');
@@ -544,6 +625,7 @@ void main() {
     test('deleteByIndex passes index', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'DeleteByIndex');
           expect(arguments['NewIndex'], '4');
@@ -557,6 +639,7 @@ void main() {
     test('getDectHandsetList parses comma-separated IDs', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetDECTHandsetList');
           return {'NewDectIDList': '1,2,3'};
@@ -570,6 +653,7 @@ void main() {
     test('getDectHandsetList returns empty list for empty string', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           return {'NewDectIDList': ''};
         },
@@ -582,6 +666,7 @@ void main() {
     test('getDectHandsetInfo returns name and phonebookId', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetDECTHandsetInfo');
           expect(arguments['NewDectID'], '1');
@@ -600,6 +685,7 @@ void main() {
     test('setDectHandsetPhonebook passes dectId and phonebookId', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetDECTHandsetPhonebook');
           expect(arguments['NewDectID'], '2');
@@ -614,6 +700,7 @@ void main() {
     test('getNumberOfDeflections returns count', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetNumberOfDeflections');
           return {'NewNumberOfDeflections': '3'};
@@ -627,6 +714,7 @@ void main() {
     test('getDeflection returns Deflection with all fields', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetDeflection');
           expect(arguments['NewDeflectionId'], '0');
@@ -655,6 +743,7 @@ void main() {
     test('getDeflection parses phonebookId when present', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           return {
             'NewEnable': '0',
@@ -676,6 +765,7 @@ void main() {
     test('getDeflections returns XML string', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetDeflections');
           return {'NewDeflectionList': '<List><Item>...</Item></List>'};
@@ -689,6 +779,7 @@ void main() {
     test('setDeflectionEnable passes id and enable flag', () async {
       final service = OnTelService(
         description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetDeflectionEnable');
           expect(arguments['NewDeflectionId'], '1');

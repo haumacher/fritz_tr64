@@ -116,6 +116,30 @@ void main() async {
         print('Created phonebook "$testBookName" (ID $testBookId).');
       }
 
+      // Call barring: fetch all entries and print the first 3
+      final barringEntries = await onTel.getCallBarringEntries();
+      print('Call barring entries: ${barringEntries.length}');
+      for (var i = 0; i < barringEntries.length && i < 3; i++) {
+        final entry = barringEntries[i];
+        final nums = entry.numbers.map((n) => '${n.type.name}:${n.number}');
+        print('  [$i] ${entry.name} — ${nums.join(', ')}');
+      }
+
+      // Add a call barring entry for +49123456789
+      const barringNumber = '+49123456789';
+      print('Adding call barring for $barringNumber...');
+      final barringEntry = PhonebookEntry(
+        name: 'Blocked Number',
+        numbers: [PhoneNumber(number: barringNumber, type: PhoneNumberType.home)],
+      );
+      final barringUid = await onTel.setCallBarringEntry(barringEntry);
+      print('Added call barring (uniqueId $barringUid).');
+
+      // Remove the call barring entry we just created
+      print('Removing call barring for $barringNumber...');
+      await onTel.deleteCallBarringEntryUID(barringUid);
+      print('Removed call barring (uniqueId $barringUid).');
+
       // Check whether "Max Mustermann" already exists in that phonebook
       if (testBookId != null) {
         var found = false;

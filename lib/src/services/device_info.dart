@@ -59,6 +59,7 @@ class DeviceInfoService extends Tr64Service {
   DeviceInfoService({
     required super.description,
     required super.callAction,
+    required super.fetchUrl,
   });
 
   /// Get device information.
@@ -99,6 +100,7 @@ extension DeviceInfoClientExtension on Tr64Client {
         actionName: actionName,
         arguments: arguments,
       ),
+      fetchUrl: fetchUrl,
     );
   }
 }

@@ -142,6 +142,23 @@ class Tr64Client {
     return authResult.arguments;
   }
 
+  /// Fetch a URL and return the response body as a string.
+  ///
+  /// Used by services to retrieve data from URLs returned by SOAP actions
+  /// (e.g. phonebook or call barring list URLs).
+  Future<String> fetchUrl(String url) async {
+    final client = _httpClient ?? _createHttpClient();
+    _httpClient = client;
+    final response = await client.get(Uri.parse(url));
+    if (response.statusCode != 200) {
+      throw HttpException(
+        'Failed to fetch URL: ${response.statusCode}',
+        uri: Uri.parse(url),
+      );
+    }
+    return response.body;
+  }
+
   /// Find a service by type and create a generic [Tr64Service] wrapper.
   Tr64Service? service(String serviceType) {
     if (_description == null) return null;
@@ -150,6 +167,7 @@ class Tr64Client {
     return Tr64Service(
       description: desc,
       callAction: _callAction,
+      fetchUrl: fetchUrl,
     );
   }
 
