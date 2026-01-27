@@ -1,52 +1,11 @@
-import 'dart:io';
-
 import 'package:flutter_tr64/flutter_tr64.dart';
 
-/// Reads a `.env` file and returns a map of key-value pairs.
-/// Skips blank lines and comments (lines starting with `#`).
-Map<String, String> _loadEnv(String path) {
-  final file = File(path);
-  if (!file.existsSync()) {
-    stderr.writeln('Error: .env file not found at "$path".');
-    stderr.writeln('Copy .env.example to .env and fill in your Fritz!Box credentials.');
-    exit(1);
-  }
-
-  final env = <String, String>{};
-  for (final line in file.readAsLinesSync()) {
-    final trimmed = line.trim();
-    if (trimmed.isEmpty || trimmed.startsWith('#')) continue;
-    final idx = trimmed.indexOf('=');
-    if (idx < 0) continue;
-    final key = trimmed.substring(0, idx).trim();
-    final value = trimmed.substring(idx + 1).trim();
-    env[key] = value;
-  }
-  return env;
-}
+import 'config.dart';
 
 void main() async {
-  final env = _loadEnv('.env');
-
-  const requiredKeys = ['FRITZBOX_HOST', 'FRITZBOX_USERNAME', 'FRITZBOX_PASSWORD'];
-  final missing = requiredKeys.where((k) => !env.containsKey(k) || env[k]!.isEmpty).toList();
-  if (missing.isNotEmpty) {
-    stderr.writeln('Error: missing required .env keys: ${missing.join(', ')}');
-    stderr.writeln('See .env.example for the expected format.');
-    exit(1);
-  }
-
-  // Create a client for your Fritz!Box
-  final client = Tr64Client(
-    host: env['FRITZBOX_HOST']!,
-    username: env['FRITZBOX_USERNAME']!,
-    password: env['FRITZBOX_PASSWORD']!,
-  );
+  final client = await createClient();
 
   try {
-    // Connect: fetches and parses the device description
-    await client.connect();
-
     print('Connected! Found ${client.description!.allServices.length} services.');
 
     // Use the DeviceInfo service
@@ -57,115 +16,6 @@ void main() async {
       print('Software: ${info.softwareVersion}');
       print('Serial: ${info.serialNumber}');
       print('Uptime: ${info.upTime} seconds');
-    }
-
-    // Use the OnTel service to list phonebooks
-    final onTel = client.onTel();
-    if (onTel != null) {
-      final phonebookIds = await onTel.getPhonebookList();
-      final totalEntries = await onTel.getNumberOfEntries();
-      print('Phonebooks: $phonebookIds ($totalEntries total entries)');
-      for (final id in phonebookIds) {
-        final phonebook = await onTel.getPhonebook(id);
-        print('  [$id] ${phonebook.name} (${phonebook.url})');
-      }
-
-      // Read the first 3 entries from the first phonebook
-      if (phonebookIds.isNotEmpty) {
-        final firstId = phonebookIds.first;
-        print('First 3 entries from phonebook $firstId:');
-        for (var i = 0; i < 3; i++) {
-          try {
-            final entry = await onTel.getPhonebookEntry(firstId, i);
-            final nums = entry.numbers.map((n) => '${n.type.name}:${n.number}');
-            print('  [$i] ${entry.name} — ${nums.join(', ')}');
-          } on SoapFaultException {
-            break;
-          }
-        }
-      }
-
-      // Ensure a "TestTR64" phonebook exists with a "Max Mustermann" contact
-      const testBookName = 'TestTR64';
-      int? testBookId;
-
-      // Check whether a phonebook named "TestTR64" already exists
-      for (final id in phonebookIds) {
-        final pb = await onTel.getPhonebook(id);
-        if (pb.name == testBookName) {
-          testBookId = id;
-          break;
-        }
-      }
-
-      if (testBookId != null) {
-        print('Phonebook "$testBookName" already exists (ID $testBookId).');
-      } else {
-        print('Phonebook "$testBookName" not found — creating it...');
-        await onTel.addPhonebook(testBookName);
-
-        // Re-fetch the list and find the new ID
-        final updatedIds = await onTel.getPhonebookList();
-        for (final id in updatedIds) {
-          final pb = await onTel.getPhonebook(id);
-          if (pb.name == testBookName) {
-            testBookId = id;
-            break;
-          }
-        }
-        print('Created phonebook "$testBookName" (ID $testBookId).');
-      }
-
-      // Call barring: fetch all entries and print the first 3
-      final barringEntries = await onTel.getCallBarringEntries();
-      print('Call barring entries: ${barringEntries.length}');
-      for (var i = 0; i < barringEntries.length && i < 3; i++) {
-        final entry = barringEntries[i];
-        final nums = entry.numbers.map((n) => '${n.type.name}:${n.number}');
-        print('  [$i] ${entry.name} — ${nums.join(', ')}');
-      }
-
-      // Add a call barring entry for +49123456789
-      const barringNumber = '+49123456789';
-      print('Adding call barring for $barringNumber...');
-      final barringEntry = PhonebookEntry(
-        name: 'Blocked Number',
-        numbers: [PhoneNumber(number: barringNumber, type: PhoneNumberType.home)],
-      );
-      final barringUid = await onTel.setCallBarringEntry(barringEntry);
-      print('Added call barring (uniqueId $barringUid).');
-
-      // Remove the call barring entry we just created
-      print('Removing call barring for $barringNumber...');
-      await onTel.deleteCallBarringEntryUID(barringUid);
-      print('Removed call barring (uniqueId $barringUid).');
-
-      // Check whether "Max Mustermann" already exists in that phonebook
-      if (testBookId != null) {
-        var found = false;
-        for (var i = 0;; i++) {
-          try {
-            final entry = await onTel.getPhonebookEntry(testBookId, i);
-            if (entry.name == 'Max Mustermann') {
-              print('Contact "Max Mustermann" already exists (entry $i).');
-              found = true;
-              break;
-            }
-          } on SoapFaultException {
-            break; // no more entries
-          }
-        }
-
-        if (!found) {
-          print('Contact "Max Mustermann" not found — adding it...');
-          final entry = PhonebookEntry(
-            name: 'Max Mustermann',
-            numbers: [PhoneNumber(number: '+490123456789', type: PhoneNumberType.home)],
-          );
-          final uid = await onTel.setPhonebookEntryUID(testBookId, entry);
-          print('Added "Max Mustermann" (uniqueId $uid).');
-        }
-      }
     }
 
     // Or call any service action generically
