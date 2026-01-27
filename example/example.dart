@@ -77,7 +77,7 @@ void main() async {
         for (var i = 0; i < 3; i++) {
           try {
             final entry = await onTel.getPhonebookEntry(firstId, i);
-            final nums = entry.numbers.map((n) => '${n.type}:${n.number}');
+            final nums = entry.numbers.map((n) => '${n.type.name}:${n.number}');
             print('  [$i] ${entry.name} — ${nums.join(', ')}');
           } on SoapFaultException {
             break;
@@ -134,15 +134,11 @@ void main() async {
 
         if (!found) {
           print('Contact "Max Mustermann" not found — adding it...');
-          const contactXml = '''
-<contact>
-  <person><realName>Max Mustermann</realName></person>
-  <telephony>
-    <number type="home">+490123456789</number>
-  </telephony>
-</contact>''';
-          final uid =
-              await onTel.setPhonebookEntryUID(testBookId, contactXml);
+          final entry = PhonebookEntry(
+            name: 'Max Mustermann',
+            numbers: [PhoneNumber(number: '+490123456789', type: PhoneNumberType.home)],
+          );
+          final uid = await onTel.setPhonebookEntryUID(testBookId, entry);
           print('Added "Max Mustermann" (uniqueId $uid).');
         }
       }

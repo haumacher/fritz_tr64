@@ -89,12 +89,12 @@ void main() {
       expect(entry.numbers, hasLength(2));
 
       expect(entry.numbers[0].number, '+4930123456');
-      expect(entry.numbers[0].type, 'home');
+      expect(entry.numbers[0].type, PhoneNumberType.home);
       expect(entry.numbers[0].quickdial, '1');
       expect(entry.numbers[0].prio, 0);
 
       expect(entry.numbers[1].number, '+491701234567');
-      expect(entry.numbers[1].type, 'mobile');
+      expect(entry.numbers[1].type, PhoneNumberType.mobile);
       expect(entry.numbers[1].prio, 1);
     });
 
@@ -118,6 +118,63 @@ void main() {
     test('toString shows name and number count', () {
       final entry = PhonebookEntry.fromXml(_contactXml);
       expect(entry.toString(), 'PhonebookEntry(Max Mustermann, 2 numbers)');
+    });
+
+    test('toXml produces valid contact XML', () {
+      final entry = PhonebookEntry(
+        name: 'Max Mustermann',
+        category: 1,
+        uniqueId: 42,
+        imageUrl: '/img.jpg',
+        numbers: [
+          PhoneNumber(number: '+4930123456', type: PhoneNumberType.home, quickdial: '1'),
+          PhoneNumber(number: '+491701234567', type: PhoneNumberType.mobile, prio: 1),
+        ],
+        emails: ['max@example.com'],
+      );
+
+      final xml = entry.toXml();
+      expect(xml, contains('<realName>Max Mustermann</realName>'));
+      expect(xml, contains('<category>1</category>'));
+      expect(xml, contains('<uniqueid>42</uniqueid>'));
+      expect(xml, contains('<imageURL>/img.jpg</imageURL>'));
+      expect(xml, contains('type="home"'));
+      expect(xml, contains('quickdial="1"'));
+      expect(xml, contains('+4930123456'));
+      expect(xml, contains('type="mobile"'));
+      expect(xml, contains('prio="1"'));
+      expect(xml, contains('<email>max@example.com</email>'));
+    });
+
+    test('toXml omits optional fields when null/empty', () {
+      final entry = PhonebookEntry(name: 'Simple');
+
+      final xml = entry.toXml();
+      expect(xml, contains('<realName>Simple</realName>'));
+      expect(xml, isNot(contains('<category>')));
+      expect(xml, isNot(contains('<uniqueid>')));
+      expect(xml, isNot(contains('<imageURL>')));
+      expect(xml, isNot(contains('<telephony>')));
+    });
+
+    test('toXml roundtrips through fromXml', () {
+      final original = PhonebookEntry(
+        name: 'Roundtrip Test',
+        category: 0,
+        numbers: [
+          PhoneNumber(number: '+49123', type: PhoneNumberType.work, prio: 1),
+        ],
+        emails: ['test@example.com'],
+      );
+
+      final parsed = PhonebookEntry.fromXml(original.toXml());
+      expect(parsed.name, original.name);
+      expect(parsed.category, original.category);
+      expect(parsed.numbers.length, original.numbers.length);
+      expect(parsed.numbers[0].number, original.numbers[0].number);
+      expect(parsed.numbers[0].type, original.numbers[0].type);
+      expect(parsed.numbers[0].prio, original.numbers[0].prio);
+      expect(parsed.emails, original.emails);
     });
   });
 
@@ -254,11 +311,11 @@ void main() {
       await service.addPhonebook('Work', extraId: '7');
     });
 
-    test('addPhonebook omits extraId when not provided', () async {
+    test('addPhonebook sends empty extraId when not provided', () async {
       final service = OnTelService(
         description: _fakeDescription(),
         callAction: (serviceType, controlUrl, actionName, arguments) async {
-          expect(arguments.containsKey('NewPhonebookExtraID'), isFalse);
+          expect(arguments['NewPhonebookExtraID'], '');
           return {};
         },
       );
@@ -279,34 +336,42 @@ void main() {
       await service.deletePhonebook(2);
     });
 
-    test('setPhonebookEntry passes ID, entryID, and data', () async {
+    test('setPhonebookEntry passes ID, entryID, and entry XML', () async {
+      final entry = PhonebookEntry(
+        name: 'Test',
+        numbers: [PhoneNumber(number: '+49123', type: PhoneNumberType.home)],
+      );
       final service = OnTelService(
         description: _fakeDescription(),
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetPhonebookEntry');
           expect(arguments['NewPhonebookID'], '0');
           expect(arguments['NewPhonebookEntryID'], '');
-          expect(arguments['NewPhonebookEntryData'], _contactXml);
+          expect(arguments['NewPhonebookEntryData'], entry.toXml());
           return {};
         },
       );
 
-      await service.setPhonebookEntry(0, '', _contactXml);
+      await service.setPhonebookEntry(0, '', entry);
     });
 
-    test('setPhonebookEntryUID passes ID and data, returns uniqueId',
+    test('setPhonebookEntryUID passes ID and entry XML, returns uniqueId',
         () async {
+      final entry = PhonebookEntry(
+        name: 'Test',
+        numbers: [PhoneNumber(number: '+49123', type: PhoneNumberType.home)],
+      );
       final service = OnTelService(
         description: _fakeDescription(),
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetPhonebookEntryUID');
           expect(arguments['NewPhonebookID'], '0');
-          expect(arguments['NewPhonebookEntryData'], _contactXml);
+          expect(arguments['NewPhonebookEntryData'], entry.toXml());
           return {'NewPhonebookEntryUniqueID': '55'};
         },
       );
 
-      final uid = await service.setPhonebookEntryUID(0, _contactXml);
+      final uid = await service.setPhonebookEntryUID(0, entry);
       expect(uid, 55);
     });
 
@@ -379,17 +444,21 @@ void main() {
       expect(url, 'http://fritz.box/barring.xml');
     });
 
-    test('setCallBarringEntry passes data and returns uniqueId', () async {
+    test('setCallBarringEntry passes entry XML and returns uniqueId', () async {
+      final entry = PhonebookEntry(
+        name: 'Blocked',
+        numbers: [PhoneNumber(number: '+49999', type: PhoneNumberType.home)],
+      );
       final service = OnTelService(
         description: _fakeDescription(),
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetCallBarringEntry');
-          expect(arguments['NewPhonebookEntryData'], _contactXml);
+          expect(arguments['NewPhonebookEntryData'], entry.toXml());
           return {'NewPhonebookEntryUniqueID': '10'};
         },
       );
 
-      final uid = await service.setCallBarringEntry(_contactXml);
+      final uid = await service.setCallBarringEntry(entry);
       expect(uid, 10);
     });
 

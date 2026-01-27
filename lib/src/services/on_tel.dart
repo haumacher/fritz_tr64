@@ -27,10 +27,28 @@ class Phonebook {
   String toString() => 'Phonebook($name, $url)';
 }
 
+/// Well-known phone number types per the TR-064 contact spec.
+enum PhoneNumberType {
+  home,
+  mobile,
+  work,
+  intern;
+
+  /// Parse a type attribute value from XML.
+  ///
+  /// Returns the matching enum value, or `null` for unknown types.
+  static PhoneNumberType? tryParse(String value) {
+    for (final t in values) {
+      if (t.name == value) return t;
+    }
+    return null;
+  }
+}
+
 /// A phone number from a phonebook contact.
 class PhoneNumber {
   final String number;
-  final String type;
+  final PhoneNumberType type;
   final String quickdial;
   final String vanity;
   final int prio;
@@ -44,7 +62,7 @@ class PhoneNumber {
   });
 
   @override
-  String toString() => 'PhoneNumber($type: $number)';
+  String toString() => 'PhoneNumber(${type.name}: $number)';
 }
 
 /// A parsed phonebook contact entry.
@@ -64,6 +82,45 @@ class PhonebookEntry {
     this.numbers = const [],
     this.emails = const [],
   });
+
+  /// Serialize this entry to an XML `<contact>` string.
+  String toXml() {
+    final builder = XmlBuilder();
+    builder.element('contact', nest: () {
+      if (category != null) {
+        builder.element('category', nest: category.toString());
+      }
+      builder.element('person', nest: () {
+        builder.element('realName', nest: name);
+        if (imageUrl != null) {
+          builder.element('imageURL', nest: imageUrl!);
+        }
+      });
+      if (numbers.isNotEmpty || emails.isNotEmpty) {
+        builder.element('telephony', nest: () {
+          for (final n in numbers) {
+            builder.element('number', attributes: {
+              'type': n.type.name,
+              if (n.prio != 0) 'prio': n.prio.toString(),
+              if (n.quickdial.isNotEmpty) 'quickdial': n.quickdial,
+              if (n.vanity.isNotEmpty) 'vanity': n.vanity,
+            }, nest: n.number);
+          }
+          if (emails.isNotEmpty) {
+            builder.element('services', nest: () {
+              for (final email in emails) {
+                builder.element('email', nest: email);
+              }
+            });
+          }
+        });
+      }
+      if (uniqueId != null) {
+        builder.element('uniqueid', nest: uniqueId.toString());
+      }
+    });
+    return builder.buildDocument().rootElement.toXmlString();
+  }
 
   /// Parse from the XML string returned by GetPhonebookEntry.
   factory PhonebookEntry.fromXml(String xml) {
@@ -89,9 +146,11 @@ class PhonebookEntry {
     if (telephony != null) {
       for (final el in telephony.childElements
           .where((e) => e.localName == 'number')) {
+        final type = PhoneNumberType.tryParse(el.getAttribute('type') ?? '');
+        if (type == null) continue; // skip unknown types
         numbers.add(PhoneNumber(
           number: el.innerText,
-          type: el.getAttribute('type') ?? '',
+          type: type,
           quickdial: el.getAttribute('quickdial') ?? '',
           vanity: el.getAttribute('vanity') ?? '',
           prio: int.tryParse(el.getAttribute('prio') ?? '') ?? 0,
@@ -280,10 +339,10 @@ class OnTelService extends Tr64Service {
   /// Add a new phonebook.
   ///
   /// [extraId] is optional and can make a phonebook unique.
-  Future<void> addPhonebook(String name, {String? extraId}) async {
+  Future<void> addPhonebook(String name, {String extraId = ''}) async {
     await call('AddPhonebook', {
       'NewPhonebookName': name,
-      if (extraId != null) 'NewPhonebookExtraID': extraId,
+      'NewPhonebookExtraID': extraId,
     });
   }
 
@@ -292,34 +351,34 @@ class OnTelService extends Tr64Service {
   /// The default phonebook (ID 0) cannot be deleted; instead all its
   /// entries are removed and it becomes empty.
   /// [extraId] is optional.
-  Future<void> deletePhonebook(int phonebookId, {String? extraId}) async {
+  Future<void> deletePhonebook(int phonebookId, {String extraId = ''}) async {
     await call('DeletePhonebook', {
       'NewPhonebookID': phonebookId.toString(),
-      if (extraId != null) 'NewPhonebookExtraID': extraId,
+      'NewPhonebookExtraID': extraId,
     });
   }
 
   /// Add or update a phonebook entry by entry index.
   ///
   /// To add a new entry, pass an empty string for [entryId].
-  /// [entryData] is the XML `<contact>` structure.
   Future<void> setPhonebookEntry(
-      int phonebookId, String entryId, String entryData) async {
+      int phonebookId, String entryId, PhonebookEntry entry) async {
     await call('SetPhonebookEntry', {
       'NewPhonebookID': phonebookId.toString(),
       'NewPhonebookEntryID': entryId,
-      'NewPhonebookEntryData': entryData,
+      'NewPhonebookEntryData': entry.toXml(),
     });
   }
 
   /// Add or update a phonebook entry by unique ID.
   ///
-  /// To add a new entry, omit the `<uniqueid>` tag from [entryData].
+  /// To add a new entry, leave [PhonebookEntry.uniqueId] as null.
   /// Returns the unique ID of the new or changed entry.
-  Future<int> setPhonebookEntryUID(int phonebookId, String entryData) async {
+  Future<int> setPhonebookEntryUID(
+      int phonebookId, PhonebookEntry entry) async {
     final result = await call('SetPhonebookEntryUID', {
       'NewPhonebookID': phonebookId.toString(),
-      'NewPhonebookEntryData': entryData,
+      'NewPhonebookEntryData': entry.toXml(),
     });
     return int.parse(result['NewPhonebookEntryUniqueID'] ?? '0');
   }
@@ -376,9 +435,9 @@ class OnTelService extends Tr64Service {
   /// Add or update a call barring entry.
   ///
   /// Returns the unique ID of the new or changed entry.
-  Future<int> setCallBarringEntry(String entryData) async {
+  Future<int> setCallBarringEntry(PhonebookEntry entry) async {
     final result = await call('SetCallBarringEntry', {
-      'NewPhonebookEntryData': entryData,
+      'NewPhonebookEntryData': entry.toXml(),
     });
     return int.parse(result['NewPhonebookEntryUniqueID'] ?? '0');
   }
