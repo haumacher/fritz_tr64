@@ -405,5 +405,84 @@ void main() {
 
       await service.deleteCallBarringEntryUID(10);
     });
+
+    test('getInfoByIndex returns OnlinePhonebookInfo', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetInfoByIndex');
+          expect(arguments['NewIndex'], '1');
+          return {
+            'NewEnable': '1',
+            'NewStatus': 'OK',
+            'NewLastConnect': '2025-01-01',
+            'NewUrl': 'https://remote.example.com/pb',
+            'NewServiceId': 'svc1',
+            'NewUsername': 'admin',
+            'NewName': 'Remote PB',
+          };
+        },
+      );
+
+      final info = await service.getInfoByIndex(1);
+      expect(info.enable, isTrue);
+      expect(info.status, 'OK');
+      expect(info.url, 'https://remote.example.com/pb');
+      expect(info.name, 'Remote PB');
+    });
+
+    test('setEnableByIndex passes index and enable flag', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'SetEnableByIndex');
+          expect(arguments['NewIndex'], '2');
+          expect(arguments['NewEnable'], '1');
+          return {};
+        },
+      );
+
+      await service.setEnableByIndex(2, true);
+    });
+
+    test('setConfigByIndex passes all parameters', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'SetConfigByIndex');
+          expect(arguments['NewIndex'], '3');
+          expect(arguments['NewEnable'], '0');
+          expect(arguments['NewUrl'], 'https://example.com');
+          expect(arguments['NewServiceId'], 'svc');
+          expect(arguments['NewUsername'], 'user');
+          expect(arguments['NewPassword'], 'pass');
+          expect(arguments['NewName'], 'Test');
+          return {};
+        },
+      );
+
+      await service.setConfigByIndex(
+        index: 3,
+        enable: false,
+        url: 'https://example.com',
+        serviceId: 'svc',
+        username: 'user',
+        password: 'pass',
+        name: 'Test',
+      );
+    });
+
+    test('deleteByIndex passes index', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'DeleteByIndex');
+          expect(arguments['NewIndex'], '4');
+          return {};
+        },
+      );
+
+      await service.deleteByIndex(4);
+    });
   });
 }

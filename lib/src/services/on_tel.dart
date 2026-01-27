@@ -138,6 +138,42 @@ String? _childText(XmlElement parent, String localName) {
   return text.isEmpty ? null : text;
 }
 
+/// Information about an online (remote) phonebook account.
+class OnlinePhonebookInfo {
+  final bool enable;
+  final String status;
+  final String lastConnect;
+  final String url;
+  final String serviceId;
+  final String username;
+  final String name;
+
+  OnlinePhonebookInfo({
+    required this.enable,
+    required this.status,
+    required this.lastConnect,
+    required this.url,
+    required this.serviceId,
+    required this.username,
+    required this.name,
+  });
+
+  factory OnlinePhonebookInfo.fromArguments(Map<String, String> args) {
+    return OnlinePhonebookInfo(
+      enable: args['NewEnable'] == '1',
+      status: args['NewStatus'] ?? '',
+      lastConnect: args['NewLastConnect'] ?? '',
+      url: args['NewUrl'] ?? '',
+      serviceId: args['NewServiceId'] ?? '',
+      username: args['NewUsername'] ?? '',
+      name: args['NewName'] ?? '',
+    );
+  }
+
+  @override
+  String toString() => 'OnlinePhonebookInfo($name, $url)';
+}
+
 /// TR-064 X_AVM-DE_OnTel service (contacts / phonebook).
 ///
 /// Service type: urn:dslforum-org:service:X_AVM-DE_OnTel:1
@@ -299,6 +335,57 @@ class OnTelService extends Tr64Service {
   Future<void> deleteCallBarringEntryUID(int uniqueId) async {
     await call('DeleteCallBarringEntryUID', {
       'NewPhonebookEntryUniqueID': uniqueId.toString(),
+    });
+  }
+
+  // -- Online phonebook management --
+
+  /// Get information about an online phonebook account by index.
+  Future<OnlinePhonebookInfo> getInfoByIndex(int index) async {
+    final result = await call('GetInfoByIndex', {
+      'NewIndex': index.toString(),
+    });
+    return OnlinePhonebookInfo.fromArguments(result);
+  }
+
+  /// Enable or disable an online phonebook account.
+  ///
+  /// Switching from false to true triggers synchronization.
+  Future<void> setEnableByIndex(int index, bool enable) async {
+    await call('SetEnableByIndex', {
+      'NewIndex': index.toString(),
+      'NewEnable': enable ? '1' : '0',
+    });
+  }
+
+  /// Configure an online phonebook account.
+  ///
+  /// If [index] addresses an existing account, the configuration is changed.
+  /// If [index] is `numberOfEntries + 1`, a new account is created.
+  Future<void> setConfigByIndex({
+    required int index,
+    required bool enable,
+    required String url,
+    required String serviceId,
+    required String username,
+    required String password,
+    required String name,
+  }) async {
+    await call('SetConfigByIndex', {
+      'NewIndex': index.toString(),
+      'NewEnable': enable ? '1' : '0',
+      'NewUrl': url,
+      'NewServiceId': serviceId,
+      'NewUsername': username,
+      'NewPassword': password,
+      'NewName': name,
+    });
+  }
+
+  /// Delete an online phonebook account by index.
+  Future<void> deleteByIndex(int index) async {
+    await call('DeleteByIndex', {
+      'NewIndex': index.toString(),
     });
   }
 }
