@@ -337,5 +337,73 @@ void main() {
 
       await service.deletePhonebookEntryUID(0, 42);
     });
+
+    test('getCallBarringEntry returns PhonebookEntry', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetCallBarringEntry');
+          expect(arguments['NewPhonebookEntryID'], '5');
+          return {'NewPhonebookEntryData': _contactXml};
+        },
+      );
+
+      final entry = await service.getCallBarringEntry(5);
+      expect(entry.name, 'Max Mustermann');
+    });
+
+    test('getCallBarringEntryByNum returns PhonebookEntry', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetCallBarringEntryByNum');
+          expect(arguments['NewNumber'], '+491234567');
+          return {'NewPhonebookEntryData': _contactXml};
+        },
+      );
+
+      final entry = await service.getCallBarringEntryByNum('+491234567');
+      expect(entry.name, 'Max Mustermann');
+    });
+
+    test('getCallBarringList returns URL', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetCallBarringList');
+          return {'NewPhonebookURL': 'http://fritz.box/barring.xml'};
+        },
+      );
+
+      final url = await service.getCallBarringList();
+      expect(url, 'http://fritz.box/barring.xml');
+    });
+
+    test('setCallBarringEntry passes data and returns uniqueId', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'SetCallBarringEntry');
+          expect(arguments['NewPhonebookEntryData'], _contactXml);
+          return {'NewPhonebookEntryUniqueID': '10'};
+        },
+      );
+
+      final uid = await service.setCallBarringEntry(_contactXml);
+      expect(uid, 10);
+    });
+
+    test('deleteCallBarringEntryUID passes uniqueId', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'DeleteCallBarringEntryUID');
+          expect(arguments['NewPhonebookEntryUniqueID'], '10');
+          return {};
+        },
+      );
+
+      await service.deleteCallBarringEntryUID(10);
+    });
   });
 }

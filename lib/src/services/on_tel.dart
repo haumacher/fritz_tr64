@@ -257,6 +257,50 @@ class OnTelService extends Tr64Service {
     final result = await call('GetNumberOfEntries');
     return int.parse(result['NewOnTelNumberOfEntries'] ?? '0');
   }
+
+  // -- Call barring --
+
+  /// Get a call barring entry by its entry ID.
+  Future<PhonebookEntry> getCallBarringEntry(int entryId) async {
+    final result = await call('GetCallBarringEntry', {
+      'NewPhonebookEntryID': entryId.toString(),
+    });
+    return PhonebookEntry.fromXml(result['NewPhonebookEntryData'] ?? '');
+  }
+
+  /// Get a call barring entry by phone number.
+  ///
+  /// Throws a SOAP fault (714) if the number exists in the phonebook
+  /// but not in the call barring list.
+  Future<PhonebookEntry> getCallBarringEntryByNum(String number) async {
+    final result = await call('GetCallBarringEntryByNum', {
+      'NewNumber': number,
+    });
+    return PhonebookEntry.fromXml(result['NewPhonebookEntryData'] ?? '');
+  }
+
+  /// Get the URL to an XML file containing all call barring entries.
+  Future<String> getCallBarringList() async {
+    final result = await call('GetCallBarringList');
+    return result['NewPhonebookURL'] ?? '';
+  }
+
+  /// Add or update a call barring entry.
+  ///
+  /// Returns the unique ID of the new or changed entry.
+  Future<int> setCallBarringEntry(String entryData) async {
+    final result = await call('SetCallBarringEntry', {
+      'NewPhonebookEntryData': entryData,
+    });
+    return int.parse(result['NewPhonebookEntryUniqueID'] ?? '0');
+  }
+
+  /// Delete a call barring entry by its unique ID.
+  Future<void> deleteCallBarringEntryUID(int uniqueId) async {
+    await call('DeleteCallBarringEntryUID', {
+      'NewPhonebookEntryUniqueID': uniqueId.toString(),
+    });
+  }
 }
 
 /// Extension on [Tr64Client] to access the OnTel (phonebook) service.
