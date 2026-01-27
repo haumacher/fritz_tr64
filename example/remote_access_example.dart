@@ -12,12 +12,22 @@ void main() async {
       return;
     }
 
+    // Remote access info
+    print('Remote access info:');
+    final info = await remote.getInfo();
+    print('  Enabled:        ${info.enabled}');
+    print('  Port:           ${info.port}');
+    print('  Username:       ${info.username}');
+    print('  LE enabled:     ${info.letsEncryptEnabled}');
+    print('  LE state:       ${info.letsEncryptState ?? '(none)'}');
+
     // List all available DDNS providers
+    print('\nDDNS providers:');
     final providers = await remote.getDDNSProviders();
-    print('DDNS providers: ${providers.length}');
+    print('  Count: ${providers.length}');
     for (final p in providers) {
-      final info = p.infoURL.isNotEmpty ? ' (${p.infoURL})' : '';
-      print('  - ${p.providerName}$info');
+      final url = p.infoURL.isNotEmpty ? ' (${p.infoURL})' : '';
+      print('  - ${p.providerName}$url');
     }
 
     // Look up current DDNS configuration
