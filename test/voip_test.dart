@@ -14,28 +14,73 @@ ServiceDescription _fakeDescription() {
 Future<String> _unusedFetchUrl(String url) async => '';
 
 void main() {
+  group('VoiceCoding', () {
+    test('tryParse returns matching enum value', () {
+      expect(VoiceCoding.tryParse('fixed'), VoiceCoding.fixed);
+      expect(VoiceCoding.tryParse('auto'), VoiceCoding.auto);
+      expect(VoiceCoding.tryParse('compressed'), VoiceCoding.compressed);
+      expect(
+          VoiceCoding.tryParse('autocompressed'), VoiceCoding.autocompressed);
+    });
+
+    test('tryParse returns null for unrecognised or empty', () {
+      expect(VoiceCoding.tryParse('G.711'), isNull);
+      expect(VoiceCoding.tryParse(''), isNull);
+    });
+
+    test('toString returns spec value', () {
+      expect(VoiceCoding.fixed.toString(), 'fixed');
+      expect(VoiceCoding.auto.toString(), 'auto');
+      expect(VoiceCoding.compressed.toString(), 'compressed');
+      expect(VoiceCoding.autocompressed.toString(), 'autocompressed');
+    });
+  });
+
+  group('VoIPStatus', () {
+    test('tryParse returns matching enum value', () {
+      expect(VoIPStatus.tryParse('disabled'), VoIPStatus.disabled);
+      expect(VoIPStatus.tryParse('not registered'), VoIPStatus.notRegistered);
+      expect(VoIPStatus.tryParse('registered'), VoIPStatus.registered);
+      expect(VoIPStatus.tryParse('connected'), VoIPStatus.connected);
+      expect(VoIPStatus.tryParse('unknown'), VoIPStatus.unknown);
+    });
+
+    test('tryParse returns null for unrecognised or empty', () {
+      expect(VoIPStatus.tryParse('Registered'), isNull);
+      expect(VoIPStatus.tryParse(''), isNull);
+    });
+
+    test('toString returns spec value', () {
+      expect(VoIPStatus.disabled.toString(), 'disabled');
+      expect(VoIPStatus.notRegistered.toString(), 'not registered');
+      expect(VoIPStatus.registered.toString(), 'registered');
+      expect(VoIPStatus.connected.toString(), 'connected');
+      expect(VoIPStatus.unknown.toString(), 'unknown');
+    });
+  });
+
   group('VoIPInfo', () {
     test('fromArguments parses all fields', () {
       final info = VoIPInfo.fromArguments({
         'NewFaxT38Enable': '1',
-        'NewVoiceCoding': 'G.711',
+        'NewVoiceCoding': 'fixed',
       });
 
       expect(info.faxT38Enable, isTrue);
-      expect(info.voiceCoding, 'G.711');
+      expect(info.voiceCoding, VoiceCoding.fixed);
     });
 
     test('fromArguments defaults for missing keys', () {
       final info = VoIPInfo.fromArguments({});
 
       expect(info.faxT38Enable, isFalse);
-      expect(info.voiceCoding, '');
+      expect(info.voiceCoding, isNull);
     });
 
     test('toString includes key fields', () {
-      final info = VoIPInfo(faxT38Enable: true, voiceCoding: 'G.722');
+      final info = VoIPInfo(faxT38Enable: true, voiceCoding: VoiceCoding.auto);
       expect(info.toString(), contains('faxT38=true'));
-      expect(info.toString(), contains('coding=G.722'));
+      expect(info.toString(), contains('coding=auto'));
     });
   });
 
@@ -100,7 +145,7 @@ void main() {
         'NewVoIPUsername': 'user1',
         'NewVoIPOutboundProxy': 'proxy.example.com',
         'NewVoIPSTUNServer': 'stun.example.com',
-        'NewVoIPStatus': 'Registered',
+        'NewVoIPStatus': 'registered',
       });
 
       expect(account.registrar, 'sip.example.com');
@@ -108,7 +153,7 @@ void main() {
       expect(account.username, 'user1');
       expect(account.outboundProxy, 'proxy.example.com');
       expect(account.stunServer, 'stun.example.com');
-      expect(account.status, 'Registered');
+      expect(account.status, VoIPStatus.registered);
     });
 
     test('fromArguments defaults for missing keys', () {
@@ -119,7 +164,7 @@ void main() {
       expect(account.username, '');
       expect(account.outboundProxy, '');
       expect(account.stunServer, '');
-      expect(account.status, '');
+      expect(account.status, isNull);
     });
 
     test('toString includes number and registrar', () {
@@ -129,7 +174,7 @@ void main() {
         username: 'u',
         outboundProxy: '',
         stunServer: '',
-        status: '',
+        status: null,
       );
       expect(account.toString(), 'VoIPAccount(+49123, sip.example.com)');
     });
@@ -319,14 +364,14 @@ void main() {
           expect(arguments, isEmpty);
           return {
             'NewFaxT38Enable': '1',
-            'NewVoiceCoding': 'G.711',
+            'NewVoiceCoding': 'fixed',
           };
         },
       );
 
       final info = await service.getInfo();
       expect(info.faxT38Enable, isTrue);
-      expect(info.voiceCoding, 'G.711');
+      expect(info.voiceCoding, VoiceCoding.fixed);
     });
 
     test('getInfoEx returns VoIPInfoEx', () async {
@@ -409,7 +454,7 @@ void main() {
             'NewVoIPUsername': 'user1',
             'NewVoIPOutboundProxy': 'proxy.example.com',
             'NewVoIPSTUNServer': 'stun.example.com',
-            'NewVoIPStatus': 'Registered',
+            'NewVoIPStatus': 'registered',
           };
         },
       );
@@ -418,7 +463,7 @@ void main() {
       expect(account.registrar, 'sip.example.com');
       expect(account.number, '+4930123456');
       expect(account.username, 'user1');
-      expect(account.status, 'Registered');
+      expect(account.status, VoIPStatus.registered);
     });
 
     test('getVoIPAccounts parses XML list', () async {
@@ -430,7 +475,7 @@ void main() {
     <Username>u1</Username>
     <OutboundProxy>proxy1</OutboundProxy>
     <STUNServer>stun1</STUNServer>
-    <Status>Registered</Status>
+    <Status>connected</Status>
   </Item>
   <Item>
     <Number>+4930222</Number>
@@ -438,7 +483,7 @@ void main() {
     <Username>u2</Username>
     <OutboundProxy></OutboundProxy>
     <STUNServer></STUNServer>
-    <Status>Unregistered</Status>
+    <Status>disabled</Status>
   </Item>
 </List>''';
 
@@ -456,10 +501,10 @@ void main() {
       expect(accounts[0].number, '+4930111');
       expect(accounts[0].registrar, 'sip1.example.com');
       expect(accounts[0].username, 'u1');
-      expect(accounts[0].status, 'Registered');
+      expect(accounts[0].status, VoIPStatus.connected);
       expect(accounts[1].number, '+4930222');
       expect(accounts[1].registrar, 'sip2.example.com');
-      expect(accounts[1].status, 'Unregistered');
+      expect(accounts[1].status, VoIPStatus.disabled);
     });
 
     test('getVoIPAccounts returns empty list for empty XML', () async {
@@ -475,19 +520,19 @@ void main() {
       expect(accounts, isEmpty);
     });
 
-    test('getVoIPStatus returns status string', () async {
+    test('getVoIPStatus returns parsed status', () async {
       final service = VoIPService(
         description: _fakeDescription(),
         fetchUrl: _unusedFetchUrl,
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetVoIPStatus');
           expect(arguments['NewVoIPAccountIndex'], '1');
-          return {'NewVoIPStatus': 'Registered'};
+          return {'NewVoIPStatus': 'registered'};
         },
       );
 
       final status = await service.getVoIPStatus(1);
-      expect(status, 'Registered');
+      expect(status, VoIPStatus.registered);
     });
 
     test('getVoIPEnableAreaCode returns bool', () async {
@@ -557,12 +602,13 @@ void main() {
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'SetConfig');
           expect(arguments['NewFaxT38Enable'], '1');
-          expect(arguments['NewVoiceCoding'], 'G.722');
+          expect(arguments['NewVoiceCoding'], 'auto');
           return {};
         },
       );
 
-      await service.setConfig(faxT38Enable: true, voiceCoding: 'G.722');
+      await service.setConfig(
+          faxT38Enable: true, voiceCoding: VoiceCoding.auto);
     });
 
     test('getVoIPCommonCountryCode returns CountryCode', () async {

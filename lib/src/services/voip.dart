@@ -3,10 +3,77 @@ import 'package:xml/xml.dart';
 import '../client.dart';
 import '../service.dart';
 
+/// Voice coding mode.
+enum VoiceCoding {
+  /// Always use POTS quality (default).
+  fixed('fixed'),
+
+  /// Automatic audio codec selection.
+  auto('auto'),
+
+  /// Always use audio codec with compression.
+  compressed('compressed'),
+
+  /// Automatic use of compressed audio codec.
+  autocompressed('autocompressed');
+
+  final String _value;
+  const VoiceCoding(this._value);
+
+  /// Parse a voice coding string returned by the Fritz!Box.
+  ///
+  /// Returns `null` for unrecognised or empty values.
+  static VoiceCoding? tryParse(String value) {
+    for (final v in values) {
+      if (v._value == value) return v;
+    }
+    return null;
+  }
+
+  @override
+  String toString() => _value;
+}
+
+/// VoIP account registration status.
+enum VoIPStatus {
+  /// VoIP account is disabled.
+  disabled('disabled'),
+
+  /// VoIP account is not registered.
+  notRegistered('not registered'),
+
+  /// VoIP account is successfully registered.
+  registered('registered'),
+
+  /// A VoIP connection is active.
+  connected('connected'),
+
+  /// Unknown error.
+  unknown('unknown');
+
+  final String _value;
+  const VoIPStatus(this._value);
+
+  /// Parse a VoIP status string returned by the Fritz!Box.
+  ///
+  /// Returns `null` for unrecognised or empty values.
+  static VoIPStatus? tryParse(String value) {
+    for (final s in values) {
+      if (s._value == value) return s;
+    }
+    return null;
+  }
+
+  @override
+  String toString() => _value;
+}
+
 /// Result of X_VoIP:GetInfo action.
 class VoIPInfo {
   final bool faxT38Enable;
-  final String voiceCoding;
+
+  /// Voice coding mode.
+  final VoiceCoding? voiceCoding;
 
   VoIPInfo({
     required this.faxT38Enable,
@@ -16,7 +83,7 @@ class VoIPInfo {
   factory VoIPInfo.fromArguments(Map<String, String> args) {
     return VoIPInfo(
       faxT38Enable: args['NewFaxT38Enable'] == '1',
-      voiceCoding: args['NewVoiceCoding'] ?? '',
+      voiceCoding: VoiceCoding.tryParse(args['NewVoiceCoding'] ?? ''),
     );
   }
 
@@ -130,7 +197,9 @@ class VoIPAccount {
   final String username;
   final String outboundProxy;
   final String stunServer;
-  final String status;
+
+  /// Registration status of this VoIP account.
+  final VoIPStatus? status;
 
   VoIPAccount({
     required this.registrar,
@@ -148,7 +217,7 @@ class VoIPAccount {
       username: args['NewVoIPUsername'] ?? '',
       outboundProxy: args['NewVoIPOutboundProxy'] ?? '',
       stunServer: args['NewVoIPSTUNServer'] ?? '',
-      status: args['NewVoIPStatus'] ?? '',
+      status: VoIPStatus.tryParse(args['NewVoIPStatus'] ?? ''),
     );
   }
 
@@ -391,11 +460,11 @@ class VoIPService extends Tr64Service {
   /// Set the VoIP configuration (fax T.38 and voice coding).
   Future<void> setConfig({
     required bool faxT38Enable,
-    required String voiceCoding,
+    required VoiceCoding voiceCoding,
   }) async {
     await call('SetConfig', {
       'NewFaxT38Enable': faxT38Enable ? '1' : '0',
-      'NewVoiceCoding': voiceCoding,
+      'NewVoiceCoding': voiceCoding.toString(),
     });
   }
 
@@ -477,11 +546,11 @@ class VoIPService extends Tr64Service {
   }
 
   /// Get the status of a VoIP account.
-  Future<String> getVoIPStatus(int accountIndex) async {
+  Future<VoIPStatus?> getVoIPStatus(int accountIndex) async {
     final result = await call('GetVoIPStatus', {
       'NewVoIPAccountIndex': accountIndex.toString(),
     });
-    return result['NewVoIPStatus'] ?? '';
+    return VoIPStatus.tryParse(result['NewVoIPStatus'] ?? '');
   }
 
   // -- Dialing --
@@ -691,7 +760,7 @@ List<VoIPAccount> _parseVoIPAccountsXml(String xml) {
       username: _childText(item, 'Username') ?? '',
       outboundProxy: _childText(item, 'OutboundProxy') ?? '',
       stunServer: _childText(item, 'STUNServer') ?? '',
-      status: _childText(item, 'Status') ?? '',
+      status: VoIPStatus.tryParse(_childText(item, 'Status') ?? ''),
     ));
   }
   return accounts;
