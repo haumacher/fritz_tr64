@@ -7,6 +7,7 @@ export 'src/device_description.dart'
     show DeviceDescription, ServiceDescription, DeviceNode;
 export 'src/service.dart' show Tr64Service;
 export 'src/services/device_info.dart';
+export 'src/services/my_fritz.dart';
 export 'src/services/on_tel.dart';
 export 'src/services/remote_access.dart';
 export 'src/services/tam.dart';
