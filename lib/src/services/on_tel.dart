@@ -189,6 +189,69 @@ class OnTelService extends Tr64Service {
     return PhonebookEntry.fromXml(result['NewPhonebookEntryData'] ?? '');
   }
 
+  /// Add a new phonebook.
+  ///
+  /// [extraId] is optional and can make a phonebook unique.
+  Future<void> addPhonebook(String name, {String? extraId}) async {
+    await call('AddPhonebook', {
+      'NewPhonebookName': name,
+      if (extraId != null) 'NewPhonebookExtraID': extraId,
+    });
+  }
+
+  /// Delete a phonebook by ID.
+  ///
+  /// The default phonebook (ID 0) cannot be deleted; instead all its
+  /// entries are removed and it becomes empty.
+  /// [extraId] is optional.
+  Future<void> deletePhonebook(int phonebookId, {String? extraId}) async {
+    await call('DeletePhonebook', {
+      'NewPhonebookID': phonebookId.toString(),
+      if (extraId != null) 'NewPhonebookExtraID': extraId,
+    });
+  }
+
+  /// Add or update a phonebook entry by entry index.
+  ///
+  /// To add a new entry, pass an empty string for [entryId].
+  /// [entryData] is the XML `<contact>` structure.
+  Future<void> setPhonebookEntry(
+      int phonebookId, String entryId, String entryData) async {
+    await call('SetPhonebookEntry', {
+      'NewPhonebookID': phonebookId.toString(),
+      'NewPhonebookEntryID': entryId,
+      'NewPhonebookEntryData': entryData,
+    });
+  }
+
+  /// Add or update a phonebook entry by unique ID.
+  ///
+  /// To add a new entry, omit the `<uniqueid>` tag from [entryData].
+  /// Returns the unique ID of the new or changed entry.
+  Future<int> setPhonebookEntryUID(int phonebookId, String entryData) async {
+    final result = await call('SetPhonebookEntryUID', {
+      'NewPhonebookID': phonebookId.toString(),
+      'NewPhonebookEntryData': entryData,
+    });
+    return int.parse(result['NewPhonebookEntryUniqueID'] ?? '0');
+  }
+
+  /// Delete a phonebook entry by its index.
+  Future<void> deletePhonebookEntry(int phonebookId, int entryId) async {
+    await call('DeletePhonebookEntry', {
+      'NewPhonebookID': phonebookId.toString(),
+      'NewPhonebookEntryID': entryId.toString(),
+    });
+  }
+
+  /// Delete a phonebook entry by its unique ID.
+  Future<void> deletePhonebookEntryUID(int phonebookId, int uniqueId) async {
+    await call('DeletePhonebookEntryUID', {
+      'NewPhonebookID': phonebookId.toString(),
+      'NewPhonebookEntryUniqueID': uniqueId.toString(),
+    });
+  }
+
   /// Get the total number of phonebook entries.
   Future<int> getNumberOfEntries() async {
     final result = await call('GetNumberOfEntries');

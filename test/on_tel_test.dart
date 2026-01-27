@@ -239,5 +239,103 @@ void main() {
       expect(entry.name, 'Max Mustermann');
       expect(entry.uniqueId, 42);
     });
+
+    test('addPhonebook passes name and optional extraId', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'AddPhonebook');
+          expect(arguments['NewPhonebookName'], 'Work');
+          expect(arguments['NewPhonebookExtraID'], '7');
+          return {};
+        },
+      );
+
+      await service.addPhonebook('Work', extraId: '7');
+    });
+
+    test('addPhonebook omits extraId when not provided', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(arguments.containsKey('NewPhonebookExtraID'), isFalse);
+          return {};
+        },
+      );
+
+      await service.addPhonebook('Personal');
+    });
+
+    test('deletePhonebook passes ID', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'DeletePhonebook');
+          expect(arguments['NewPhonebookID'], '2');
+          return {};
+        },
+      );
+
+      await service.deletePhonebook(2);
+    });
+
+    test('setPhonebookEntry passes ID, entryID, and data', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'SetPhonebookEntry');
+          expect(arguments['NewPhonebookID'], '0');
+          expect(arguments['NewPhonebookEntryID'], '');
+          expect(arguments['NewPhonebookEntryData'], _contactXml);
+          return {};
+        },
+      );
+
+      await service.setPhonebookEntry(0, '', _contactXml);
+    });
+
+    test('setPhonebookEntryUID passes ID and data, returns uniqueId',
+        () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'SetPhonebookEntryUID');
+          expect(arguments['NewPhonebookID'], '0');
+          expect(arguments['NewPhonebookEntryData'], _contactXml);
+          return {'NewPhonebookEntryUniqueID': '55'};
+        },
+      );
+
+      final uid = await service.setPhonebookEntryUID(0, _contactXml);
+      expect(uid, 55);
+    });
+
+    test('deletePhonebookEntry passes IDs', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'DeletePhonebookEntry');
+          expect(arguments['NewPhonebookID'], '0');
+          expect(arguments['NewPhonebookEntryID'], '5');
+          return {};
+        },
+      );
+
+      await service.deletePhonebookEntry(0, 5);
+    });
+
+    test('deletePhonebookEntryUID passes IDs', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'DeletePhonebookEntryUID');
+          expect(arguments['NewPhonebookID'], '0');
+          expect(arguments['NewPhonebookEntryUniqueID'], '42');
+          return {};
+        },
+      );
+
+      await service.deletePhonebookEntryUID(0, 42);
+    });
   });
 }
