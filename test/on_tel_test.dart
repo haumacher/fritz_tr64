@@ -11,6 +11,36 @@ ServiceDescription _fakeDescription() {
   );
 }
 
+const _contactXml = '''
+<contact>
+  <category>1</category>
+  <person>
+    <realName>Max Mustermann</realName>
+    <imageURL>/download.lua?path=/var/fonpix/1.jpg</imageURL>
+  </person>
+  <telephony>
+    <services>
+      <email>max@example.com</email>
+      <email>work@example.com</email>
+    </services>
+    <number type="home" quickdial="1" vanity="" prio="0">+4930123456</number>
+    <number type="mobile" quickdial="" vanity="" prio="1">+491701234567</number>
+  </telephony>
+  <uniqueid>42</uniqueid>
+</contact>
+''';
+
+const _minimalContactXml = '''
+<contact>
+  <person>
+    <realName>Sparse Entry</realName>
+  </person>
+  <telephony>
+    <services/>
+  </telephony>
+</contact>
+''';
+
 void main() {
   group('Phonebook', () {
     test('fromArguments parses all fields', () {
@@ -40,6 +70,54 @@ void main() {
         extraId: '',
       );
       expect(phonebook.toString(), 'Phonebook(Main, http://fritz.box/pb.xml)');
+    });
+  });
+
+  group('PhonebookEntry', () {
+    test('fromXml parses all fields', () {
+      final entry = PhonebookEntry.fromXml(_contactXml);
+
+      expect(entry.name, 'Max Mustermann');
+      expect(entry.uniqueId, 42);
+      expect(entry.category, 1);
+      expect(entry.imageUrl, '/download.lua?path=/var/fonpix/1.jpg');
+    });
+
+    test('fromXml parses phone numbers with attributes', () {
+      final entry = PhonebookEntry.fromXml(_contactXml);
+
+      expect(entry.numbers, hasLength(2));
+
+      expect(entry.numbers[0].number, '+4930123456');
+      expect(entry.numbers[0].type, 'home');
+      expect(entry.numbers[0].quickdial, '1');
+      expect(entry.numbers[0].prio, 0);
+
+      expect(entry.numbers[1].number, '+491701234567');
+      expect(entry.numbers[1].type, 'mobile');
+      expect(entry.numbers[1].prio, 1);
+    });
+
+    test('fromXml parses emails', () {
+      final entry = PhonebookEntry.fromXml(_contactXml);
+
+      expect(entry.emails, ['max@example.com', 'work@example.com']);
+    });
+
+    test('fromXml handles minimal contact', () {
+      final entry = PhonebookEntry.fromXml(_minimalContactXml);
+
+      expect(entry.name, 'Sparse Entry');
+      expect(entry.uniqueId, isNull);
+      expect(entry.category, isNull);
+      expect(entry.imageUrl, isNull);
+      expect(entry.numbers, isEmpty);
+      expect(entry.emails, isEmpty);
+    });
+
+    test('toString shows name and number count', () {
+      final entry = PhonebookEntry.fromXml(_contactXml);
+      expect(entry.toString(), 'PhonebookEntry(Max Mustermann, 2 numbers)');
     });
   });
 
@@ -128,34 +206,38 @@ void main() {
       expect(count, 25);
     });
 
-    test('getPhonebookEntry passes IDs and returns XML data', () async {
+    test('getPhonebookEntry passes IDs and returns PhonebookEntry', () async {
       final service = OnTelService(
         description: _fakeDescription(),
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetPhonebookEntry');
           expect(arguments['NewPhonebookID'], '0');
           expect(arguments['NewPhonebookEntryID'], '3');
-          return {'NewPhonebookEntryData': '<contact>...</contact>'};
+          return {'NewPhonebookEntryData': _contactXml};
         },
       );
 
-      final xml = await service.getPhonebookEntry(0, 3);
-      expect(xml, '<contact>...</contact>');
+      final entry = await service.getPhonebookEntry(0, 3);
+      expect(entry.name, 'Max Mustermann');
+      expect(entry.uniqueId, 42);
+      expect(entry.numbers, hasLength(2));
     });
 
-    test('getPhonebookEntryUID passes IDs and returns XML data', () async {
+    test('getPhonebookEntryUID passes IDs and returns PhonebookEntry',
+        () async {
       final service = OnTelService(
         description: _fakeDescription(),
         callAction: (serviceType, controlUrl, actionName, arguments) async {
           expect(actionName, 'GetPhonebookEntryUID');
           expect(arguments['NewPhonebookID'], '0');
           expect(arguments['NewPhonebookEntryUniqueID'], '99');
-          return {'NewPhonebookEntryData': '<contact uid="99">...</contact>'};
+          return {'NewPhonebookEntryData': _contactXml};
         },
       );
 
-      final xml = await service.getPhonebookEntryUID(0, 99);
-      expect(xml, '<contact uid="99">...</contact>');
+      final entry = await service.getPhonebookEntryUID(0, 99);
+      expect(entry.name, 'Max Mustermann');
+      expect(entry.uniqueId, 42);
     });
   });
 }

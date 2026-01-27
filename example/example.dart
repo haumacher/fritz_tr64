@@ -69,6 +69,21 @@ void main() async {
         final phonebook = await onTel.getPhonebook(id);
         print('  [$id] ${phonebook.name} (${phonebook.url})');
       }
+
+      // Read the first 3 entries from the first phonebook
+      if (phonebookIds.isNotEmpty) {
+        final firstId = phonebookIds.first;
+        print('First 3 entries from phonebook $firstId:');
+        for (var i = 0; i < 3; i++) {
+          try {
+            final entry = await onTel.getPhonebookEntry(firstId, i);
+            final nums = entry.numbers.map((n) => '${n.type}:${n.number}');
+            print('  [$i] ${entry.name} — ${nums.join(', ')}');
+          } on SoapFaultException {
+            break;
+          }
+        }
+      }
     }
 
     // Or call any service action generically
