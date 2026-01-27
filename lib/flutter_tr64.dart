@@ -8,4 +8,5 @@ export 'src/device_description.dart'
 export 'src/service.dart' show Tr64Service;
 export 'src/services/device_info.dart';
 export 'src/services/on_tel.dart';
+export 'src/services/voip.dart';
 export 'src/soap.dart' show SoapEnvelope, SoapResponse, SoapFaultException;
