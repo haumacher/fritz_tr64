@@ -1,5 +1,5 @@
-import 'package:flutter_tr64/src/device_description.dart';
-import 'package:flutter_tr64/src/services/app_setup.dart';
+import 'package:fritz_tr064/src/device_description.dart';
+import 'package:fritz_tr064/src/services/app_setup.dart';
 import 'package:test/test.dart';
 
 ServiceDescription _fakeDescription() {

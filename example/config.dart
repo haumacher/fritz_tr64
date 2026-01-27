@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter_tr64/flutter_tr64.dart';
+import 'package:fritz_tr064/fritz_tr064.dart';
 
 /// Reads a `.env` file and returns a map of key-value pairs.
 /// Skips blank lines and comments (lines starting with `#`).

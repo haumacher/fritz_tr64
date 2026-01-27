@@ -1,4 +1,4 @@
-import 'package:flutter_tr64/src/auth.dart';
+import 'package:fritz_tr064/src/auth.dart';
 import 'package:test/test.dart';
 
 void main() {

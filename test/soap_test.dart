@@ -1,4 +1,4 @@
-import 'package:flutter_tr64/src/soap.dart';
+import 'package:fritz_tr064/src/soap.dart';
 import 'package:test/test.dart';
 import 'package:xml/xml.dart';
 

@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:flutter_tr64/flutter_tr64.dart';
+import 'package:fritz_tr064/fritz_tr064.dart';
 
 import 'config.dart';
 

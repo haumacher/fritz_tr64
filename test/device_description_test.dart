@@ -1,4 +1,4 @@
-import 'package:flutter_tr64/src/device_description.dart';
+import 'package:fritz_tr064/src/device_description.dart';
 import 'package:test/test.dart';
 
 const _sampleXml = '''<?xml version="1.0"?>
