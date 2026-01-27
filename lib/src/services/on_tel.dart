@@ -188,6 +188,44 @@ class DectHandsetInfo {
   String toString() => 'DectHandsetInfo($handsetName, phonebook=$phonebookId)';
 }
 
+/// A call deflection rule.
+class Deflection {
+  final bool enable;
+  final String type;
+  final String number;
+  final String deflectionToNumber;
+  final String mode;
+  final String outgoing;
+  final int? phonebookId;
+
+  Deflection({
+    required this.enable,
+    required this.type,
+    required this.number,
+    required this.deflectionToNumber,
+    required this.mode,
+    required this.outgoing,
+    this.phonebookId,
+  });
+
+  factory Deflection.fromArguments(Map<String, String> args) {
+    final pbIdStr = args['NewPhonebookID'];
+    return Deflection(
+      enable: args['NewEnable'] == '1',
+      type: args['NewType'] ?? '',
+      number: args['NewNumber'] ?? '',
+      deflectionToNumber: args['NewDeflectionToNumber'] ?? '',
+      mode: args['NewMode'] ?? '',
+      outgoing: args['NewOutgoing'] ?? '',
+      phonebookId:
+          pbIdStr != null && pbIdStr.isNotEmpty ? int.tryParse(pbIdStr) : null,
+    );
+  }
+
+  @override
+  String toString() => 'Deflection($type, $number -> $deflectionToNumber)';
+}
+
 /// TR-064 X_AVM-DE_OnTel service (contacts / phonebook).
 ///
 /// Service type: urn:dslforum-org:service:X_AVM-DE_OnTel:1
@@ -429,6 +467,36 @@ class OnTelService extends Tr64Service {
     await call('SetDECTHandsetPhonebook', {
       'NewDectID': dectId,
       'NewPhonebookID': phonebookId.toString(),
+    });
+  }
+
+  // -- Deflections --
+
+  /// Get the number of call deflection rules.
+  Future<int> getNumberOfDeflections() async {
+    final result = await call('GetNumberOfDeflections');
+    return int.parse(result['NewNumberOfDeflections'] ?? '0');
+  }
+
+  /// Get a single deflection rule by index (0-based).
+  Future<Deflection> getDeflection(int deflectionId) async {
+    final result = await call('GetDeflection', {
+      'NewDeflectionId': deflectionId.toString(),
+    });
+    return Deflection.fromArguments(result);
+  }
+
+  /// Get the full deflection list as an XML string.
+  Future<String> getDeflections() async {
+    final result = await call('GetDeflections');
+    return result['NewDeflectionList'] ?? '';
+  }
+
+  /// Enable or disable a deflection rule.
+  Future<void> setDeflectionEnable(int deflectionId, bool enable) async {
+    await call('SetDeflectionEnable', {
+      'NewDeflectionId': deflectionId.toString(),
+      'NewEnable': enable ? '1' : '0',
     });
   }
 }

@@ -541,5 +541,94 @@ void main() {
 
       await service.setDectHandsetPhonebook('2', 1);
     });
+
+    test('getNumberOfDeflections returns count', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetNumberOfDeflections');
+          return {'NewNumberOfDeflections': '3'};
+        },
+      );
+
+      final count = await service.getNumberOfDeflections();
+      expect(count, 3);
+    });
+
+    test('getDeflection returns Deflection with all fields', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetDeflection');
+          expect(arguments['NewDeflectionId'], '0');
+          return {
+            'NewEnable': '1',
+            'NewType': 'fromNumber',
+            'NewNumber': '12345',
+            'NewDeflectionToNumber': '98765',
+            'NewMode': 'eImmediately',
+            'NewOutgoing': '0',
+            'NewPhonebookID': '',
+          };
+        },
+      );
+
+      final d = await service.getDeflection(0);
+      expect(d.enable, isTrue);
+      expect(d.type, 'fromNumber');
+      expect(d.number, '12345');
+      expect(d.deflectionToNumber, '98765');
+      expect(d.mode, 'eImmediately');
+      expect(d.outgoing, '0');
+      expect(d.phonebookId, isNull);
+    });
+
+    test('getDeflection parses phonebookId when present', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          return {
+            'NewEnable': '0',
+            'NewType': 'fromPB',
+            'NewNumber': '',
+            'NewDeflectionToNumber': '555',
+            'NewMode': 'eBusy',
+            'NewOutgoing': '',
+            'NewPhonebookID': '2',
+          };
+        },
+      );
+
+      final d = await service.getDeflection(1);
+      expect(d.phonebookId, 2);
+      expect(d.type, 'fromPB');
+    });
+
+    test('getDeflections returns XML string', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetDeflections');
+          return {'NewDeflectionList': '<List><Item>...</Item></List>'};
+        },
+      );
+
+      final xml = await service.getDeflections();
+      expect(xml, '<List><Item>...</Item></List>');
+    });
+
+    test('setDeflectionEnable passes id and enable flag', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'SetDeflectionEnable');
+          expect(arguments['NewDeflectionId'], '1');
+          expect(arguments['NewEnable'], '0');
+          return {};
+        },
+      );
+
+      await service.setDeflectionEnable(1, false);
+    });
   });
 }
