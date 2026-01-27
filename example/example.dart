@@ -84,6 +84,68 @@ void main() async {
           }
         }
       }
+
+      // Ensure a "TestTR64" phonebook exists with a "Max Mustermann" contact
+      const testBookName = 'TestTR64';
+      int? testBookId;
+
+      // Check whether a phonebook named "TestTR64" already exists
+      for (final id in phonebookIds) {
+        final pb = await onTel.getPhonebook(id);
+        if (pb.name == testBookName) {
+          testBookId = id;
+          break;
+        }
+      }
+
+      if (testBookId != null) {
+        print('Phonebook "$testBookName" already exists (ID $testBookId).');
+      } else {
+        print('Phonebook "$testBookName" not found — creating it...');
+        await onTel.addPhonebook(testBookName);
+
+        // Re-fetch the list and find the new ID
+        final updatedIds = await onTel.getPhonebookList();
+        for (final id in updatedIds) {
+          final pb = await onTel.getPhonebook(id);
+          if (pb.name == testBookName) {
+            testBookId = id;
+            break;
+          }
+        }
+        print('Created phonebook "$testBookName" (ID $testBookId).');
+      }
+
+      // Check whether "Max Mustermann" already exists in that phonebook
+      if (testBookId != null) {
+        var found = false;
+        for (var i = 0;; i++) {
+          try {
+            final entry = await onTel.getPhonebookEntry(testBookId, i);
+            if (entry.name == 'Max Mustermann') {
+              print('Contact "Max Mustermann" already exists (entry $i).');
+              found = true;
+              break;
+            }
+          } on SoapFaultException {
+            break; // no more entries
+          }
+        }
+
+        if (!found) {
+          print('Contact "Max Mustermann" not found — adding it...');
+          const contactXml = '''
+<contact>
+  <person><realName>Max Mustermann</realName></person>
+  <telephony>
+    <number type="home">+490123456789</number>
+  </telephony>
+</contact>''';
+          final uid =
+              await onTel.setPhonebookEntryUID(testBookId, contactXml);
+          print('Added "Max Mustermann" (uniqueId $uid).');
+        }
+      }
     }
 
     // Or call any service action generically
