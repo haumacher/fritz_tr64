@@ -103,7 +103,7 @@ void main() {
         tam: 0,
         called: '030123456',
         date: '25.01.26 14:30',
-        duration: 45,
+        duration: '0:45',
         inBook: true,
         name: 'Max Mustermann',
         isNew: true,
@@ -119,7 +119,7 @@ void main() {
     test('toString includes index and name', () {
       final item = TAMListItem(
         index: 0,
-        display: 'AB 1',
+        display: true,
         enable: true,
         name: 'Answering Machine 1',
       );
@@ -136,7 +136,7 @@ void main() {
         status: 0,
         capacity: 1200,
         items: [
-          TAMListItem(index: 0, display: 'AB 1', enable: true, name: 'AB 1'),
+          TAMListItem(index: 0, display: true, enable: true, name: 'AB 1'),
         ],
       );
       expect(list.toString(), 'TAMList(running=true, 1 items)');
@@ -228,10 +228,10 @@ void main() {
     <Tam>0</Tam>
     <Called>030123456</Called>
     <Date>25.01.26 14:30</Date>
-    <Duration>45</Duration>
+    <Duration>0:45</Duration>
     <Inbook>1</Inbook>
     <Name>Max Mustermann</Name>
-    <New>1</New>
+    <New>0</New>
     <Number>017012345</Number>
     <Path>/data/tam/rec/rec.0.000</Path>
   </Message>
@@ -240,10 +240,10 @@ void main() {
     <Tam>0</Tam>
     <Called>030123456</Called>
     <Date>24.01.26 09:15</Date>
-    <Duration>12</Duration>
+    <Duration>0:12</Duration>
     <Inbook>0</Inbook>
     <Name></Name>
-    <New>0</New>
+    <New>1</New>
     <Number>0800555000</Number>
     <Path>/data/tam/rec/rec.0.001</Path>
   </Message>
@@ -270,7 +270,7 @@ void main() {
       expect(messages[0].tam, 0);
       expect(messages[0].called, '030123456');
       expect(messages[0].date, '25.01.26 14:30');
-      expect(messages[0].duration, 45);
+      expect(messages[0].duration, '0:45');
       expect(messages[0].inBook, isTrue);
       expect(messages[0].name, 'Max Mustermann');
       expect(messages[0].isNew, isTrue);
@@ -365,13 +365,13 @@ void main() {
           '<Capacity>1200</Capacity>'
           '<Item>'
           '<Index>0</Index>'
-          '<Display>Answering Machine 1</Display>'
+          '<Display>1</Display>'
           '<Enable>1</Enable>'
           '<Name>AB 1</Name>'
           '</Item>'
           '<Item>'
           '<Index>1</Index>'
-          '<Display>Answering Machine 2</Display>'
+          '<Display>0</Display>'
           '<Enable>0</Enable>'
           '<Name>AB 2</Name>'
           '</Item>'
@@ -393,12 +393,12 @@ void main() {
       expect(tamList.items, hasLength(2));
 
       expect(tamList.items[0].index, 0);
-      expect(tamList.items[0].display, 'Answering Machine 1');
+      expect(tamList.items[0].display, isTrue);
       expect(tamList.items[0].enable, isTrue);
       expect(tamList.items[0].name, 'AB 1');
 
       expect(tamList.items[1].index, 1);
-      expect(tamList.items[1].display, 'Answering Machine 2');
+      expect(tamList.items[1].display, isFalse);
       expect(tamList.items[1].enable, isFalse);
       expect(tamList.items[1].name, 'AB 2');
     });

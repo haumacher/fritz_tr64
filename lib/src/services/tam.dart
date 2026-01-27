@@ -110,8 +110,8 @@ class TAMMessage {
   /// Date/time string of the message (DD.MM.YY HH:MM format).
   final String date;
 
-  /// Duration of the recorded message in seconds.
-  final int duration;
+  /// Duration string (hh:mm, minutes rounded up).
+  final String duration;
 
   /// Whether the caller is in the phonebook.
   final bool inBook;
@@ -153,8 +153,8 @@ class TAMListItem {
   /// TAM index.
   final int index;
 
-  /// Display name.
-  final String display;
+  /// Whether this TAM is displayed in the WebGUI.
+  final bool display;
 
   /// Whether this TAM is enabled.
   final bool enable;
@@ -227,10 +227,10 @@ List<TAMMessage> _parseMessageListXml(String xml) {
       tam: int.tryParse(_childText(msg, 'Tam')) ?? 0,
       called: _childText(msg, 'Called'),
       date: _childText(msg, 'Date'),
-      duration: int.tryParse(_childText(msg, 'Duration')) ?? 0,
+      duration: _childText(msg, 'Duration'),
       inBook: _childText(msg, 'Inbook') == '1',
       name: _childText(msg, 'Name'),
-      isNew: _childText(msg, 'New') == '1',
+      isNew: _childText(msg, 'New') == '0',
       number: _childText(msg, 'Number'),
       path: _childText(msg, 'Path'),
     ));
@@ -247,7 +247,7 @@ TAMList _parseTAMListXml(String xml) {
   for (final item in root.findAllElements('Item')) {
     items.add(TAMListItem(
       index: int.tryParse(_childText(item, 'Index')) ?? 0,
-      display: _childText(item, 'Display'),
+      display: _childText(item, 'Display') == '1',
       enable: _childText(item, 'Enable') == '1',
       name: _childText(item, 'Name'),
     ));
