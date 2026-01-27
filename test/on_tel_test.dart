@@ -790,5 +790,166 @@ void main() {
 
       await service.setDeflectionEnable(1, false);
     });
+
+    test('getCallListEntries fetches and parses call list XML', () async {
+      const callListXml = '''
+<?xml version="1.0"?>
+<root>
+  <timestamp>123456</timestamp>
+  <Call>
+    <Id>123</Id>
+    <Type>3</Type>
+    <Called>0123456789</Called>
+    <Caller>SIP: 98765</Caller>
+    <CallerNumber>98765</CallerNumber>
+    <Name>Max Mustermann</Name>
+    <Numbertype/>
+    <Device>Mobilteil 1</Device>
+    <Port>10</Port>
+    <Date>23.09.11 08:13</Date>
+    <Duration>0:01</Duration>
+    <Count/>
+    <Path/>
+  </Call>
+  <Call>
+    <Id>122</Id>
+    <Type>1</Type>
+    <Caller>012456789</Caller>
+    <Called>SIP: 56789</Called>
+    <CalledNumber>98765</CalledNumber>
+    <Name>Max Mustermann</Name>
+    <Numbertype/>
+    <Device>Anrufbeantworter 1</Device>
+    <Port>40</Port>
+    <Date>22.09.11 14:19</Date>
+    <Duration>0:01</Duration>
+    <Count/>
+    <Path>/download.lua?path=/var/media/ftp/USB/FRITZ/voicebox/rec/rec.0.000</Path>
+  </Call>
+</root>
+''';
+
+      final service = OnTelService(
+        description: _fakeDescription(),
+        fetchUrl: (url) async {
+          expect(url, contains('calllist'));
+          expect(url, contains('max=10'));
+          return callListXml;
+        },
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetCallList');
+          return {
+            'NewCallListURL':
+                'http://fritz.box:49000/calllist.lua?sid=abc',
+          };
+        },
+      );
+
+      final calls = await service.getCallListEntries(max: 10);
+      expect(calls, hasLength(2));
+
+      expect(calls[0].id, 123);
+      expect(calls[0].type, CallType.outgoing);
+      expect(calls[0].called, '0123456789');
+      expect(calls[0].caller, 'SIP: 98765');
+      expect(calls[0].name, 'Max Mustermann');
+      expect(calls[0].device, 'Mobilteil 1');
+      expect(calls[0].port, 10);
+      expect(calls[0].date, '23.09.11 08:13');
+      expect(calls[0].duration, '0:01');
+      expect(calls[0].path, '');
+
+      expect(calls[1].id, 122);
+      expect(calls[1].type, CallType.incoming);
+      expect(calls[1].device, 'Anrufbeantworter 1');
+      expect(calls[1].port, 40);
+      expect(calls[1].path,
+          '/download.lua?path=/var/media/ftp/USB/FRITZ/voicebox/rec/rec.0.000');
+    });
+
+    test('getCallListEntries returns empty list for empty URL', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          return {'NewCallListURL': ''};
+        },
+      );
+
+      final calls = await service.getCallListEntries();
+      expect(calls, isEmpty);
+    });
+
+    test('getCallListEntries appends days parameter', () async {
+      final service = OnTelService(
+        description: _fakeDescription(),
+        fetchUrl: (url) async {
+          expect(url, contains('days=7'));
+          return '<root></root>';
+        },
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          return {
+            'NewCallListURL': 'http://fritz.box/calllist.lua?sid=abc',
+          };
+        },
+      );
+
+      final calls = await service.getCallListEntries(days: 7);
+      expect(calls, isEmpty);
+    });
+  });
+
+  group('CallType', () {
+    test('tryParse returns matching enum value', () {
+      expect(CallType.tryParse(1), CallType.incoming);
+      expect(CallType.tryParse(2), CallType.missed);
+      expect(CallType.tryParse(3), CallType.outgoing);
+      expect(CallType.tryParse(9), CallType.activeIncoming);
+      expect(CallType.tryParse(10), CallType.rejected);
+      expect(CallType.tryParse(11), CallType.activeOutgoing);
+    });
+
+    test('tryParse returns null for unknown value', () {
+      expect(CallType.tryParse(0), isNull);
+      expect(CallType.tryParse(99), isNull);
+      expect(CallType.tryParse(-1), isNull);
+    });
+  });
+
+  group('CallListEntry', () {
+    test('toString includes key fields', () {
+      final entry = CallListEntry(
+        id: 123,
+        type: CallType.outgoing,
+        called: '0123456789',
+        caller: '98765',
+        name: 'Max Mustermann',
+        numbertype: 'sip',
+        device: 'Mobilteil 1',
+        port: 10,
+        date: '23.09.11 08:13',
+        duration: '0:01',
+        path: '',
+      );
+      expect(entry.toString(),
+          'CallListEntry(123, outgoing, Max Mustermann, 23.09.11 08:13)');
+    });
+
+    test('toString handles null type', () {
+      final entry = CallListEntry(
+        id: 1,
+        type: null,
+        called: '',
+        caller: '',
+        name: '',
+        numbertype: '',
+        device: '',
+        port: 0,
+        date: '',
+        duration: '',
+        path: '',
+      );
+      expect(entry.toString(), 'CallListEntry(1, ?, , )');
+    });
   });
 }

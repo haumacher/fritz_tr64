@@ -210,6 +210,121 @@ String? _childText(XmlElement parent, String localName) {
   return text.isEmpty ? null : text;
 }
 
+/// Type of call in the call list.
+enum CallType {
+  /// Call answered by phone or answering machine.
+  incoming(1),
+
+  /// Incoming call was not answered.
+  missed(2),
+
+  /// Finished call to external number.
+  outgoing(3),
+
+  /// Phone or answering machine has answered and the call is still active.
+  activeIncoming(9),
+
+  /// Incoming call was refused (e.g. by call barring).
+  rejected(10),
+
+  /// Call to external number is still active.
+  activeOutgoing(11);
+
+  final int value;
+  const CallType(this.value);
+
+  /// Parse a type integer from the call list XML.
+  ///
+  /// Returns `null` for unknown values.
+  static CallType? tryParse(int value) {
+    for (final t in values) {
+      if (t.value == value) return t;
+    }
+    return null;
+  }
+}
+
+/// A single entry from the call list XML.
+///
+/// The XML has the structure:
+/// root > Call with child elements Id, Type, Called, Caller,
+/// CallerNumber/CalledNumber, Name, Numbertype, Device, Port, Date,
+/// Duration, Count, Path.
+class CallListEntry {
+  /// Unique ID of this call.
+  final int id;
+
+  /// Type of call (incoming, missed, outgoing, etc.).
+  final CallType? type;
+
+  /// Number or name of called party.
+  final String called;
+
+  /// Number of calling party.
+  final String caller;
+
+  /// Name of the other party (from phonebook or caller ID).
+  final String name;
+
+  /// Number type (pots, isdn, sip, umts, or empty).
+  final String numbertype;
+
+  /// Name of the telephone device used.
+  final String device;
+
+  /// Telephone port number.
+  final int port;
+
+  /// Date/time string (DD.MM.YY HH:MM format).
+  final String date;
+
+  /// Duration string (hh:mm, minutes rounded up).
+  final String duration;
+
+  /// URL path to a TAM or FAX recording, if any.
+  final String path;
+
+  CallListEntry({
+    required this.id,
+    required this.type,
+    required this.called,
+    required this.caller,
+    required this.name,
+    required this.numbertype,
+    required this.device,
+    required this.port,
+    required this.date,
+    required this.duration,
+    required this.path,
+  });
+
+  @override
+  String toString() => 'CallListEntry($id, ${type?.name ?? '?'}, $name, $date)';
+}
+
+/// Parse the call list XML into a list of [CallListEntry] objects.
+List<CallListEntry> _parseCallListXml(String xml) {
+  final document = XmlDocument.parse(xml);
+  final entries = <CallListEntry>[];
+  for (final call in document.findAllElements('Call')) {
+    entries.add(CallListEntry(
+      id: int.tryParse(_childText(call, 'Id') ?? '') ?? 0,
+      type: CallType.tryParse(
+          int.tryParse(_childText(call, 'Type') ?? '') ?? -1),
+      called: _childText(call, 'Called') ?? '',
+      caller: _childText(call, 'Caller') ?? '',
+      name: _childText(call, 'Name') ?? '',
+      numbertype: _childText(call, 'Numbertype') ?? '',
+      device: _childText(call, 'Device') ?? '',
+      port: int.tryParse(_childText(call, 'Port') ?? '') ?? 0,
+      date: _childText(call, 'Date') ?? '',
+      duration: _childText(call, 'Duration') ?? '',
+      path: _childText(call, 'Path') ?? '',
+    ));
+  }
+  return entries;
+}
+
 /// Information about an online (remote) phonebook account.
 class OnlinePhonebookInfo {
   final bool enable;
@@ -312,6 +427,30 @@ class OnTelService extends Tr64Service {
   Future<String> getCallList() async {
     final result = await call('GetCallList');
     return result['NewCallListURL'] ?? '';
+  }
+
+  /// Fetch and parse the call list.
+  ///
+  /// Calls [getCallList] to obtain the URL, appends optional query
+  /// parameters, fetches the XML, and parses each `<Call>` element.
+  ///
+  /// [max] limits the number of entries (default 999).
+  /// [days] limits how far back to look (e.g. 7 = last week).
+  Future<List<CallListEntry>> getCallListEntries({
+    int? max,
+    int? days,
+  }) async {
+    var url = await getCallList();
+    if (url.isEmpty) return [];
+    final params = <String>[];
+    if (max != null) params.add('max=$max');
+    if (days != null) params.add('days=$days');
+    if (params.isNotEmpty) {
+      final separator = url.contains('?') ? '&' : '?';
+      url = '$url$separator${params.join('&')}';
+    }
+    final body = await fetchUrl(url);
+    return _parseCallListXml(body);
   }
 
   /// Get a list of available phonebook IDs.

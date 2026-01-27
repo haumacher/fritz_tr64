@@ -113,6 +113,27 @@ void main() async {
           print('Added "Max Mustermann" (uniqueId $uid).');
         }
       }
+
+      // Retrieve and print the last 10 calls
+      print('\nLast 10 calls:');
+      final calls = await onTel.getCallListEntries(max: 10);
+      if (calls.isEmpty) {
+        print('  (no calls)');
+      } else {
+        for (final c in calls) {
+          final typeLabel = switch (c.type) {
+            CallType.incoming => 'incoming',
+            CallType.missed => 'MISSED',
+            CallType.outgoing => 'outgoing',
+            CallType.activeIncoming => 'active in',
+            CallType.rejected => 'rejected',
+            CallType.activeOutgoing => 'active out',
+            null => '?',
+          };
+          final who = c.name.isNotEmpty ? c.name : (c.caller.isNotEmpty ? c.caller : c.called);
+          print('  [$typeLabel] ${c.date}  $who  (${c.duration})  via ${c.device}');
+        }
+      }
     }
   } finally {
     client.close();
