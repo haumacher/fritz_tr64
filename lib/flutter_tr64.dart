@@ -9,6 +9,7 @@ export 'src/service.dart' show Tr64Service;
 export 'src/services/app_setup.dart';
 export 'src/services/device_info.dart';
 export 'src/services/homeauto.dart';
+export 'src/services/homeplug.dart';
 export 'src/services/my_fritz.dart';
 export 'src/services/on_tel.dart';
 export 'src/services/remote_access.dart';
