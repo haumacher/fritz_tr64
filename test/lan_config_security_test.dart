@@ -1,0 +1,344 @@
+import 'package:fritz_tr064/src/device_description.dart';
+import 'package:fritz_tr064/src/services/lan_config_security.dart';
+import 'package:test/test.dart';
+
+ServiceDescription _fakeDescription() {
+  return ServiceDescription(
+    serviceType: 'urn:dslforum-org:service:LANConfigSecurity:1',
+    serviceId: 'urn:LANConfigSecurity-com:serviceId:LANConfigSecurity1',
+    controlUrl: '/upnp/control/lanconfigsecurity',
+    scpdUrl: '/lanconfigsecuritySCPD.xml',
+  );
+}
+
+Future<String> _unusedFetchUrl(String url) async => '';
+
+void main() {
+  group('AccessRight', () {
+    test('tryParse returns matching enum value', () {
+      expect(AccessRight.tryParse('none'), AccessRight.none);
+      expect(AccessRight.tryParse('readonly'), AccessRight.readonly);
+      expect(AccessRight.tryParse('readwrite'), AccessRight.readwrite);
+    });
+
+    test('tryParse returns null for unknown or empty', () {
+      expect(AccessRight.tryParse('unknown'), isNull);
+      expect(AccessRight.tryParse(''), isNull);
+    });
+
+    test('toString returns spec value', () {
+      expect(AccessRight.none.toString(), 'none');
+      expect(AccessRight.readonly.toString(), 'readonly');
+      expect(AccessRight.readwrite.toString(), 'readwrite');
+    });
+  });
+
+  group('UserRight', () {
+    test('toString includes path and access', () {
+      final right = UserRight(path: 'Phone', access: AccessRight.readwrite);
+      expect(right.toString(), 'UserRight(Phone: readwrite)');
+    });
+
+    test('toString handles null access', () {
+      final right = UserRight(path: 'Unknown', access: null);
+      expect(right.toString(), 'UserRight(Unknown: null)');
+    });
+  });
+
+  group('User', () {
+    test('toString includes username', () {
+      final user = User(username: 'John', lastUser: false);
+      expect(user.toString(), 'User(John)');
+    });
+
+    test('toString includes lastUser flag when true', () {
+      final user = User(username: 'John', lastUser: true);
+      expect(user.toString(), 'User(John, lastUser)');
+    });
+  });
+
+  group('LanConfigSecurityInfo', () {
+    test('fromArguments parses all fields', () {
+      final info = LanConfigSecurityInfo.fromArguments({
+        'NewMaxCharsPassword': '32',
+        'NewMinCharsPassword': '8',
+        'NewAllowedCharsPassword':
+            '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+        'NewAllowedCharsUsername':
+            '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._',
+        'NewX_AVM-DE_IsDefaultPasswordActive': '1',
+      });
+
+      expect(info.maxCharsPassword, 32);
+      expect(info.minCharsPassword, 8);
+      expect(
+        info.allowedCharsPassword,
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+      );
+      expect(
+        info.allowedCharsUsername,
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._',
+      );
+      expect(info.isDefaultPasswordActive, isTrue);
+    });
+
+    test('fromArguments parses default password as false when 0', () {
+      final info = LanConfigSecurityInfo.fromArguments({
+        'NewX_AVM-DE_IsDefaultPasswordActive': '0',
+      });
+      expect(info.isDefaultPasswordActive, isFalse);
+    });
+
+    test('fromArguments defaults for missing keys', () {
+      final info = LanConfigSecurityInfo.fromArguments({});
+
+      expect(info.maxCharsPassword, 0);
+      expect(info.minCharsPassword, 0);
+      expect(info.allowedCharsPassword, '');
+      expect(info.allowedCharsUsername, '');
+      expect(info.isDefaultPasswordActive, isFalse);
+    });
+
+    test('toString includes key fields', () {
+      final info = LanConfigSecurityInfo(
+        maxCharsPassword: 32,
+        minCharsPassword: 8,
+        allowedCharsPassword: 'abc',
+        allowedCharsUsername: 'abc',
+        isDefaultPasswordActive: false,
+      );
+      expect(info.toString(), 'LanConfigSecurityInfo(password=8-32 chars)');
+    });
+  });
+
+  group('CurrentUser', () {
+    test('fromArguments parses username and rights', () {
+      final user = CurrentUser.fromArguments({
+        'NewX_AVM-DE_CurrentUsername': 'admin',
+        'NewX_AVM-DE_CurrentUserRights': '''
+<rights>
+  <path>BoxAdmin</path>
+  <access>none</access>
+  <path>Phone</path>
+  <access>readwrite</access>
+  <path>Dial</path>
+  <access>readwrite</access>
+  <path>NAS</path>
+  <access>readonly</access>
+  <path>HomeAuto</path>
+  <access>readwrite</access>
+</rights>
+''',
+      });
+
+      expect(user.username, 'admin');
+      expect(user.rights.length, 5);
+      expect(user.rights[0].path, 'BoxAdmin');
+      expect(user.rights[0].access, AccessRight.none);
+      expect(user.rights[1].path, 'Phone');
+      expect(user.rights[1].access, AccessRight.readwrite);
+      expect(user.rights[2].path, 'Dial');
+      expect(user.rights[2].access, AccessRight.readwrite);
+      expect(user.rights[3].path, 'NAS');
+      expect(user.rights[3].access, AccessRight.readonly);
+      expect(user.rights[4].path, 'HomeAuto');
+      expect(user.rights[4].access, AccessRight.readwrite);
+    });
+
+    test('fromArguments handles empty rights', () {
+      final user = CurrentUser.fromArguments({
+        'NewX_AVM-DE_CurrentUsername': 'guest',
+        'NewX_AVM-DE_CurrentUserRights': '',
+      });
+
+      expect(user.username, 'guest');
+      expect(user.rights, isEmpty);
+    });
+
+    test('fromArguments handles missing keys', () {
+      final user = CurrentUser.fromArguments({});
+
+      expect(user.username, '');
+      expect(user.rights, isEmpty);
+    });
+
+    test('fromArguments handles invalid XML', () {
+      final user = CurrentUser.fromArguments({
+        'NewX_AVM-DE_CurrentUsername': 'admin',
+        'NewX_AVM-DE_CurrentUserRights': 'not valid xml',
+      });
+
+      expect(user.username, 'admin');
+      expect(user.rights, isEmpty);
+    });
+
+    test('toString includes username and rights count', () {
+      final user = CurrentUser(
+        username: 'admin',
+        rights: [
+          UserRight(path: 'Phone', access: AccessRight.readwrite),
+          UserRight(path: 'NAS', access: AccessRight.readonly),
+        ],
+      );
+      expect(user.toString(), 'CurrentUser(admin, 2 rights)');
+    });
+  });
+
+  group('LanConfigSecurityService', () {
+    test('getInfo returns parsed LanConfigSecurityInfo', () async {
+      final service = LanConfigSecurityService(
+        description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'GetInfo');
+          expect(arguments, isEmpty);
+          return {
+            'NewMaxCharsPassword': '32',
+            'NewMinCharsPassword': '8',
+            'NewAllowedCharsPassword': 'abc123',
+            'NewAllowedCharsUsername': 'abc123-._',
+            'NewX_AVM-DE_IsDefaultPasswordActive': '0',
+          };
+        },
+      );
+
+      final info = await service.getInfo();
+      expect(info.maxCharsPassword, 32);
+      expect(info.minCharsPassword, 8);
+      expect(info.allowedCharsPassword, 'abc123');
+      expect(info.allowedCharsUsername, 'abc123-._');
+      expect(info.isDefaultPasswordActive, isFalse);
+    });
+
+    test('getAnonymousLogin returns true when enabled', () async {
+      final service = LanConfigSecurityService(
+        description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'X_AVM-DE_GetAnonymousLogin');
+          expect(arguments, isEmpty);
+          return {
+            'NewX_AVM-DE_AnonymousLoginEnabled': '1',
+          };
+        },
+      );
+
+      final enabled = await service.getAnonymousLogin();
+      expect(enabled, isTrue);
+    });
+
+    test('getAnonymousLogin returns false when disabled', () async {
+      final service = LanConfigSecurityService(
+        description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          return {
+            'NewX_AVM-DE_AnonymousLoginEnabled': '0',
+          };
+        },
+      );
+
+      final enabled = await service.getAnonymousLogin();
+      expect(enabled, isFalse);
+    });
+
+    test('getCurrentUser returns parsed CurrentUser', () async {
+      final service = LanConfigSecurityService(
+        description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'X_AVM-DE_GetCurrentUser');
+          expect(arguments, isEmpty);
+          return {
+            'NewX_AVM-DE_CurrentUsername': 'admin',
+            'NewX_AVM-DE_CurrentUserRights': '''
+<rights>
+  <path>Phone</path>
+  <access>readwrite</access>
+</rights>
+''',
+          };
+        },
+      );
+
+      final user = await service.getCurrentUser();
+      expect(user.username, 'admin');
+      expect(user.rights.length, 1);
+      expect(user.rights[0].path, 'Phone');
+      expect(user.rights[0].access, AccessRight.readwrite);
+    });
+
+    test('setConfigPassword sends correct arguments', () async {
+      final service = LanConfigSecurityService(
+        description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'SetConfigPassword');
+          expect(arguments['NewPassword'], 'mySecretPass123');
+          return {};
+        },
+      );
+
+      await service.setConfigPassword('mySecretPass123');
+    });
+
+    test('getUserList returns parsed user list', () async {
+      final service = LanConfigSecurityService(
+        description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          expect(actionName, 'X_AVM-DE_GetUserList');
+          expect(arguments, isEmpty);
+          return {
+            'NewX_AVM-DE_UserList': '''
+<List>
+  <Username last_user="1">John</Username>
+  <Username last_user="0">PowerLine</Username>
+  <Username last_user="0">repeaterpeter</Username>
+</List>
+''',
+          };
+        },
+      );
+
+      final users = await service.getUserList();
+      expect(users.length, 3);
+      expect(users[0].username, 'John');
+      expect(users[0].lastUser, isTrue);
+      expect(users[1].username, 'PowerLine');
+      expect(users[1].lastUser, isFalse);
+      expect(users[2].username, 'repeaterpeter');
+      expect(users[2].lastUser, isFalse);
+    });
+
+    test('getUserList returns empty list for empty XML', () async {
+      final service = LanConfigSecurityService(
+        description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          return {
+            'NewX_AVM-DE_UserList': '',
+          };
+        },
+      );
+
+      final users = await service.getUserList();
+      expect(users, isEmpty);
+    });
+
+    test('getUserList returns empty list for invalid XML', () async {
+      final service = LanConfigSecurityService(
+        description: _fakeDescription(),
+        fetchUrl: _unusedFetchUrl,
+        callAction: (serviceType, controlUrl, actionName, arguments) async {
+          return {
+            'NewX_AVM-DE_UserList': 'not valid xml',
+          };
+        },
+      );
+
+      final users = await service.getUserList();
+      expect(users, isEmpty);
+    });
+  });
+}
