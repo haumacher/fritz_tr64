@@ -91,7 +91,7 @@ void main() async {
       return;
     }
 
-    final appId = 'calllog-reader-${DateTime.now().millisecondsSinceEpoch}';
+    final appId = 'calllogreader${DateTime.now().millisecondsSinceEpoch}';
     final username = 'calllog${Random().nextInt(10000)}';
     final password = generatePassword();
 
