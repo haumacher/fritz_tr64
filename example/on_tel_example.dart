@@ -11,21 +11,24 @@ void main() async {
     if (onTel != null) {
       final phonebookIds = await onTel.getPhonebookList();
       final totalEntries = await onTel.getNumberOfEntries();
-      print('Phonebooks: $phonebookIds ($totalEntries total entries)');
+      print('Phonebooks: ${phonebookIds.length} ($totalEntries total entries)');
       for (final id in phonebookIds) {
-        final phonebook = await onTel.getPhonebook(id);
-        print('  [$id] ${phonebook.name}');
-        print('       URL: ${phonebook.url}');
-        if (phonebook.extraId.isNotEmpty) {
-          print('       Extra ID: ${phonebook.extraId}');
+        final pb = await onTel.getPhonebook(id);
+        print('  [$id] ${pb.name}');
+        print('       URL: ${pb.url}');
+        if (pb.extraId.isNotEmpty) {
+          print('       Extra ID: ${pb.extraId}');
         }
       }
 
-      // Online phonebook accounts (remote CardDAV/Google contacts etc.)
+      // Online phonebook accounts (CardDAV, Google, etc.) - separate from local phonebooks
       print('\nOnline phonebook accounts:');
-      for (var i = 0;; i++) {
+      var onlineCount = 0;
+      for (var i = 0; i < 10; i++) {
+        // Limit to 10 to avoid infinite loop
         try {
           final info = await onTel.getInfoByIndex(i);
+          onlineCount++;
           print('  [$i] ${info.name}');
           print('       Enabled: ${info.enable}');
           print('       URL: ${info.url}');
@@ -33,12 +36,14 @@ void main() async {
           print('       Username: ${info.username}');
           print('       Status: ${info.status}');
           if (info.lastConnect.isNotEmpty) {
-            print('       Last connect: ${info.lastConnect}');
+            print('       Last sync: ${info.lastConnect}');
           }
         } on SoapFaultException {
-          if (i == 0) print('  (none configured)');
           break;
         }
+      }
+      if (onlineCount == 0) {
+        print('  (none configured)');
       }
 
       // Read the first 3 entries from the first phonebook
