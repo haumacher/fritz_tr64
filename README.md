@@ -99,7 +99,7 @@ Checked entries are implemented in this library.
 |---------|--------|
 | DeviceInfo | :white_check_mark: |
 | DeviceConfig | |
-| LANConfigSecurity | |
+| LANConfigSecurity | :white_check_mark: |
 | X_AVM-DE_AppSetup | :white_check_mark: |
 | ManagementService | |
 | X_AVM-DE_USPController | |
