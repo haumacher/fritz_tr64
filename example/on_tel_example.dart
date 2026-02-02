@@ -19,31 +19,21 @@ void main() async {
         if (pb.extraId.isNotEmpty) {
           print('       Extra ID: ${pb.extraId}');
         }
-      }
 
-      // Online phonebook accounts (CardDAV, Google, etc.) - separate from local phonebooks
-      print('\nOnline phonebook accounts:');
-      var onlineCount = 0;
-      for (var i = 0; i < 10; i++) {
-        // Limit to 10 to avoid infinite loop
+        // Try to get online sync info for this phonebook
         try {
-          final info = await onTel.getInfoByIndex(i);
-          onlineCount++;
-          print('  [$i] ${info.name}');
-          print('       Enabled: ${info.enable}');
-          print('       URL: ${info.url}');
-          print('       Service ID: ${info.serviceId}');
-          print('       Username: ${info.username}');
-          print('       Status: ${info.status}');
-          if (info.lastConnect.isNotEmpty) {
-            print('       Last sync: ${info.lastConnect}');
+          final online = await onTel.getInfoByIndex(id);
+          print('       Service ID: ${online.serviceId}');
+          print('       Sync enabled: ${online.enable}');
+          print('       Sync URL: ${online.url}');
+          print('       Username: ${online.username}');
+          print('       Status: ${online.status}');
+          if (online.lastConnect.isNotEmpty) {
+            print('       Last sync: ${online.lastConnect}');
           }
         } on SoapFaultException {
-          break;
+          // No online config for this phonebook
         }
-      }
-      if (onlineCount == 0) {
-        print('  (none configured)');
       }
 
       // Read the first 3 entries from the first phonebook
