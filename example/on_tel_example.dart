@@ -14,7 +14,31 @@ void main() async {
       print('Phonebooks: $phonebookIds ($totalEntries total entries)');
       for (final id in phonebookIds) {
         final phonebook = await onTel.getPhonebook(id);
-        print('  [$id] ${phonebook.name} (${phonebook.url})');
+        print('  [$id] ${phonebook.name}');
+        print('       URL: ${phonebook.url}');
+        if (phonebook.extraId.isNotEmpty) {
+          print('       Extra ID: ${phonebook.extraId}');
+        }
+      }
+
+      // Online phonebook accounts (remote CardDAV/Google contacts etc.)
+      print('\nOnline phonebook accounts:');
+      for (var i = 0;; i++) {
+        try {
+          final info = await onTel.getInfoByIndex(i);
+          print('  [$i] ${info.name}');
+          print('       Enabled: ${info.enable}');
+          print('       URL: ${info.url}');
+          print('       Service ID: ${info.serviceId}');
+          print('       Username: ${info.username}');
+          print('       Status: ${info.status}');
+          if (info.lastConnect.isNotEmpty) {
+            print('       Last connect: ${info.lastConnect}');
+          }
+        } on SoapFaultException {
+          if (i == 0) print('  (none configured)');
+          break;
+        }
       }
 
       // Read the first 3 entries from the first phonebook
