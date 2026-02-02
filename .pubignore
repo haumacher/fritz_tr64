@@ -1,0 +1,5 @@
+specs/
+.idea/
+.env
+.env.example
+.claude/
