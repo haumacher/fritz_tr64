@@ -9,6 +9,8 @@ with content-level digest authentication).
 > [AVM GmbH](https://avm.de). All other trademarks are the property of
 > their respective owners.
 
+The library is available on [pub.dev](https://pub.dev/packages/fritz_tr064)
+
 ## Features
 
 - Device discovery via TR-064 device description XML
