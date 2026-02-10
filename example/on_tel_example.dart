@@ -10,19 +10,27 @@ void main() async {
     final onTel = client.onTel();
     if (onTel != null) {
       final phonebookIds = await onTel.getPhonebookList();
-      final totalEntries = await onTel.getNumberOfEntries();
-      print('Phonebooks: ${phonebookIds.length} ($totalEntries total entries)');
-      for (final id in phonebookIds) {
+      final onlineCount = await onTel.getNumberOfEntries();
+      final localCount = phonebookIds.length - onlineCount;
+      print('Phonebooks: ${phonebookIds.length} '
+          '($localCount local, $onlineCount online)');
+
+      // All phonebooks by ID (works for both local and online)
+      for (var i = 0; i < phonebookIds.length; i++) {
+        final id = phonebookIds[i];
+        final isOnline = i >= localCount;
         final pb = await onTel.getPhonebook(id);
-        print('  [$id] ${pb.name}');
+        print('  [$id] ${pb.name} (${isOnline ? 'online' : 'local'})');
         print('       URL: ${pb.url}');
         if (pb.extraId.isNotEmpty) {
           print('       Extra ID: ${pb.extraId}');
         }
 
-        // Try to get online sync info for this phonebook
-        try {
-          final online = await onTel.getInfoByIndex(id);
+        // Online phonebooks have additional sync info (1-based index)
+        if (isOnline) {
+          final onlineIndex = i - localCount + 1;
+          final online = await onTel.getInfoByIndex(onlineIndex);
+          print('       Online index: $onlineIndex');
           print('       Service ID: ${online.serviceId}');
           print('       Sync enabled: ${online.enable}');
           print('       Sync URL: ${online.url}');
@@ -31,8 +39,6 @@ void main() async {
           if (online.lastConnect.isNotEmpty) {
             print('       Last sync: ${online.lastConnect}');
           }
-        } on SoapFaultException {
-          // No online config for this phonebook
         }
       }
 
