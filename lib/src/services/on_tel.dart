@@ -572,6 +572,33 @@ class Deflection {
 /// TR-064 X_AVM-DE_OnTel service (contacts / phonebook).
 ///
 /// Service type: urn:dslforum-org:service:X_AVM-DE_OnTel:1
+///
+/// ## Phonebook IDs vs online phonebook indices
+///
+/// The Fritz!Box maintains two separate addressing schemes:
+///
+/// - **Phonebook IDs** — used by [getPhonebookList], [getPhonebook],
+///   [addPhonebook], [deletePhonebook], and all entry-level methods
+///   ([getPhonebookEntry], [setPhonebookEntry], etc.).
+/// - **Online phonebook indices** — used by [getInfoByIndex],
+///   [setEnableByIndex], [setConfigByIndex], and [deleteByIndex].
+///
+/// [getPhonebookList] returns IDs for **all** phonebooks (local and online).
+/// The IDs are numbered 0 to N, where the first IDs belong to local
+/// phonebooks and only the last [getNumberOfEntries] IDs belong to online
+/// phonebooks. IDs are **not stable** — they are reassigned when phonebooks
+/// are created or deleted.
+///
+/// The online phonebook index is **1-based** into the list of online
+/// phonebooks only. For example, if [getPhonebookList] returns
+/// `[0, 1, 2, 3, 4]` and [getNumberOfEntries] returns `2`, then IDs 0–2
+/// are local and IDs 3–4 are online (corresponding to online indices 1
+/// and 2).
+///
+/// **Important:** Local phonebooks must only be managed with ID-based
+/// methods, and online phonebooks must only be managed with index-based
+/// methods. Mixing them (e.g. deleting an online phonebook by ID) can leave
+/// the Fritz!Box in an inconsistent state that requires a reboot.
 class OnTelService extends Tr64Service {
   OnTelService({
     required super.description,
@@ -609,7 +636,12 @@ class OnTelService extends Tr64Service {
     return _parseCallListXml(body);
   }
 
-  /// Get a list of available phonebook IDs.
+  /// Get a list of available phonebook IDs (local and online).
+  ///
+  /// Returns IDs for **all** phonebooks. The first IDs belong to local
+  /// phonebooks, the last [getNumberOfEntries] IDs belong to online
+  /// phonebooks. See the class documentation for details on how to tell
+  /// them apart.
   Future<List<int>> getPhonebookList() async {
     final result = await call('GetPhonebookList');
     final csv = result['NewPhonebookList'] ?? '';
@@ -617,7 +649,11 @@ class OnTelService extends Tr64Service {
     return csv.split(',').map((s) => int.parse(s.trim())).toList();
   }
 
-  /// Get phonebook metadata by ID.
+  /// Get phonebook metadata by [phonebookId].
+  ///
+  /// Works for both local and online phonebooks. For online phonebooks,
+  /// use this to obtain the phonebook URL, but manage the online account
+  /// itself with the index-based methods ([getInfoByIndex], etc.).
   Future<Phonebook> getPhonebook(int phonebookId) async {
     final result = await call('GetPhonebook', {
       'NewPhonebookID': phonebookId.toString(),
@@ -645,9 +681,12 @@ class OnTelService extends Tr64Service {
     return PhonebookEntry.fromXml(result['NewPhonebookEntryData'] ?? '');
   }
 
-  /// Add a new phonebook.
+  /// Add a new local phonebook.
   ///
   /// [extraId] is optional and can make a phonebook unique.
+  ///
+  /// Adding a phonebook causes all phonebook IDs to be reassigned.
+  /// Use [getPhonebookList] afterwards to obtain the updated IDs.
   Future<void> addPhonebook(String name, {String extraId = ''}) async {
     await call('AddPhonebook', {
       'NewPhonebookName': name,
@@ -655,11 +694,17 @@ class OnTelService extends Tr64Service {
     });
   }
 
-  /// Delete a phonebook by ID.
+  /// Delete a local phonebook by [phonebookId].
   ///
   /// The default phonebook (ID 0) cannot be deleted; instead all its
   /// entries are removed and it becomes empty.
   /// [extraId] is optional.
+  ///
+  /// **Do not use this for online phonebooks** — use [deleteByIndex]
+  /// instead. Deleting an online phonebook by ID can leave the Fritz!Box
+  /// in an inconsistent state.
+  ///
+  /// Deleting a phonebook causes all phonebook IDs to be reassigned.
   Future<void> deletePhonebook(int phonebookId, {String extraId = ''}) async {
     await call('DeletePhonebook', {
       'NewPhonebookID': phonebookId.toString(),
@@ -708,7 +753,13 @@ class OnTelService extends Tr64Service {
     });
   }
 
-  /// Get the total number of phonebook entries.
+  /// Get the number of online phonebook accounts.
+  ///
+  /// This returns the count of **online** (remote) phonebooks, not the
+  /// total number of phonebooks. Use this together with [getPhonebookList]
+  /// to determine which phonebook IDs are local and which are online —
+  /// the last `getNumberOfEntries()` IDs from [getPhonebookList] belong
+  /// to online phonebooks.
   Future<int> getNumberOfEntries() async {
     final result = await call('GetNumberOfEntries');
     return int.parse(result['NewOnTelNumberOfEntries'] ?? '0');
@@ -771,7 +822,11 @@ class OnTelService extends Tr64Service {
 
   // -- Online phonebook management --
 
-  /// Get information about an online phonebook account by index.
+  /// Get information about an online phonebook account by [index].
+  ///
+  /// The [index] is 1-based into the list of online phonebooks only
+  /// and is **not** the same as a phonebook ID. See the class
+  /// documentation for how to map between the two.
   Future<OnlinePhonebookInfo> getInfoByIndex(int index) async {
     final result = await call('GetInfoByIndex', {
       'NewIndex': index.toString(),
@@ -782,6 +837,9 @@ class OnTelService extends Tr64Service {
   /// Enable or disable an online phonebook account.
   ///
   /// Switching from false to true triggers synchronization.
+  ///
+  /// The [index] is 1-based into the list of online phonebooks only,
+  /// not a phonebook ID.
   Future<void> setEnableByIndex(int index, bool enable) async {
     await call('SetEnableByIndex', {
       'NewIndex': index.toString(),
@@ -793,6 +851,10 @@ class OnTelService extends Tr64Service {
   ///
   /// If [index] addresses an existing account, the configuration is changed.
   /// If [index] is `numberOfEntries + 1`, a new account is created.
+  ///
+  /// The [index] is 1-based into the list of online phonebooks only,
+  /// not a phonebook ID. Creating a new account causes phonebook IDs to
+  /// be reassigned.
   Future<void> setConfigByIndex({
     required int index,
     required bool enable,
@@ -813,7 +875,11 @@ class OnTelService extends Tr64Service {
     });
   }
 
-  /// Delete an online phonebook account by index.
+  /// Delete an online phonebook account by [index].
+  ///
+  /// The [index] is 1-based into the list of online phonebooks only,
+  /// not a phonebook ID. Deleting an account causes phonebook IDs to be
+  /// reassigned.
   Future<void> deleteByIndex(int index) async {
     await call('DeleteByIndex', {
       'NewIndex': index.toString(),
