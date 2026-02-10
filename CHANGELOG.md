@@ -4,7 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## 0.2.0
 
-*Unreleased*
+### Added
+
+- LANConfigSecurity service implementation
+- `OnlinePhonebookStatus` constants for known online phonebook status codes
+- `OnlinePhonebookServiceId` constants for known service IDs (CardDAV, Google)
+- `manage_phonebooks` CLI example for phonebook API operations
+
+### Changed
+
+- `OnlinePhonebookInfo.status` is now `int` instead of `String`
+- Document phonebook ID vs online phonebook index distinction in `OnTelService`
+
+### Fixed
+
+- Fix `on_tel_example` to use correct 1-based online phonebook indices
+- Fix `AppId` to use only alphanumeric characters
 
 ## 0.1.0
 
