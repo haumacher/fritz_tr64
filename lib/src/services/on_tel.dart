@@ -325,6 +325,18 @@ List<CallListEntry> _parseCallListXml(String xml) {
   return entries;
 }
 
+/// Known service IDs for online phonebook accounts.
+///
+/// These are de-facto values observed from the Fritz!Box; the official
+/// spec only declares the service ID as a string.
+abstract final class OnlinePhonebookServiceId {
+  /// Generic CardDAV phonebook.
+  static const String cardDav = 'carddav.generic';
+
+  /// Google Contacts phonebook.
+  static const String google = 'cp';
+}
+
 /// Known status codes for online phonebook accounts.
 ///
 /// These are de-facto values observed from the Fritz!Box; the official
@@ -353,6 +365,9 @@ class OnlinePhonebookInfo {
   final int status;
   final String lastConnect;
   final String url;
+  /// Service type identifier for the online phonebook provider.
+  ///
+  /// See [OnlinePhonebookServiceId] for known values.
   final String serviceId;
   final String username;
   final String name;
