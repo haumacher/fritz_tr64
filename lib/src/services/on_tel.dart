@@ -325,10 +325,32 @@ List<CallListEntry> _parseCallListXml(String xml) {
   return entries;
 }
 
+/// Known status codes for online phonebook accounts.
+///
+/// These are de-facto values observed from the Fritz!Box; the official
+/// spec only declares the status as a string.
+abstract final class OnlinePhonebookStatus {
+  /// Phonebook is synced and up to date.
+  static const int ok = 0;
+
+  /// Synchronization is in progress.
+  static const int synchronizing = 2;
+
+  /// Authentication with the remote server failed.
+  static const int authenticationFailure = 11;
+
+  /// The CardDAV resource does not exist on the remote server.
+  static const int resourceNotFound = 20;
+}
+
 /// Information about an online (remote) phonebook account.
 class OnlinePhonebookInfo {
   final bool enable;
-  final String status;
+
+  /// Status code of the online phonebook account.
+  ///
+  /// See [OnlinePhonebookStatus] for known values.
+  final int status;
   final String lastConnect;
   final String url;
   final String serviceId;
@@ -348,7 +370,7 @@ class OnlinePhonebookInfo {
   factory OnlinePhonebookInfo.fromArguments(Map<String, String> args) {
     return OnlinePhonebookInfo(
       enable: args['NewEnable'] == '1',
-      status: args['NewStatus'] ?? '',
+      status: int.tryParse(args['NewStatus'] ?? '') ?? -1,
       lastConnect: args['NewLastConnect'] ?? '',
       url: args['NewUrl'] ?? '',
       serviceId: args['NewServiceId'] ?? '',

@@ -562,7 +562,7 @@ void main() {
           expect(arguments['NewIndex'], '1');
           return {
             'NewEnable': '1',
-            'NewStatus': 'OK',
+            'NewStatus': '0',
             'NewLastConnect': '2025-01-01',
             'NewUrl': 'https://remote.example.com/pb',
             'NewServiceId': 'svc1',
@@ -574,7 +574,7 @@ void main() {
 
       final info = await service.getInfoByIndex(1);
       expect(info.enable, isTrue);
-      expect(info.status, 'OK');
+      expect(info.status, OnlinePhonebookStatus.ok);
       expect(info.url, 'https://remote.example.com/pb');
       expect(info.name, 'Remote PB');
     });
