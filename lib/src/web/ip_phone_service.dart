@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'web_client.dart';
 
 /// Credentials and settings for an IP phone device.
@@ -62,6 +64,18 @@ class FormTwoFactor extends FormResult {
   String toString() => 'FormTwoFactor($methods)';
 }
 
+/// Callback for wizard step progress reporting.
+///
+/// Called after each wizard step with the 1-based [step] number,
+/// a short [description], the [params] that were sent, and the raw
+/// [responseBody] from the Fritz!Box.
+typedef WizardStepCallback = void Function(
+  int step,
+  String description,
+  Map<String, String> params,
+  String responseBody,
+);
+
 /// Manages IP phone (SIP device) settings via the Fritz!Box web API.
 ///
 /// The web API uses `ip_idx` (0-based index among IP phones) which differs
@@ -69,6 +83,12 @@ class FormTwoFactor extends FormResult {
 /// index by matching the SIP username.
 class IpPhoneService {
   final FritzWebClient client;
+
+  /// Saved wizard state for 2FA confirmation of [createIpPhone].
+  Map<String, String>? _pendingWizardState;
+
+  /// Saved step callback for [confirmCreate] to report the 2FA re-submit.
+  WizardStepCallback? _pendingOnStep;
 
   IpPhoneService(this.client);
 
@@ -120,11 +140,10 @@ class IpPhoneService {
     );
   }
 
-  /// Save IP phone credentials and settings.
+  /// Save IP phone credentials and settings for an existing device.
   ///
-  /// Use [ipIdx] for the device index. For a new device, use the next
-  /// available index (from [getIpPhoneCount]). Set [phoneName] when
-  /// creating a new device.
+  /// The device must already exist (created via TR-064 `SetClient4`).
+  /// Use [findIpIdx] to locate the correct `ip_idx` by SIP username.
   ///
   /// Returns a [FormResult] indicating success, validation error, or
   /// 2FA requirement.
@@ -133,7 +152,6 @@ class IpPhoneService {
     required String username,
     required String password,
     required bool fromInet,
-    String? phoneName,
   }) async {
     final json = await client.submitForm(
       page: 'edit_ipfon_option',
@@ -142,7 +160,6 @@ class IpPhoneService {
         username: username,
         password: password,
         fromInet: fromInet,
-        phoneName: phoneName,
       ),
     );
     return _parseFormResult(json);
@@ -157,7 +174,6 @@ class IpPhoneService {
     required String username,
     required String password,
     required bool fromInet,
-    String? phoneName,
   }) async {
     final json = await client.submitForm(
       page: 'edit_ipfon_option',
@@ -167,7 +183,6 @@ class IpPhoneService {
           username: username,
           password: password,
           fromInet: fromInet,
-          phoneName: phoneName,
         ),
         'confirmed': '',
         'twofactor': '',
@@ -176,19 +191,267 @@ class IpPhoneService {
     return _parseFormResult(json);
   }
 
+  /// Create a new IP phone device using the Fritz!Box wizard.
+  ///
+  /// This drives the `assi_telefon` multi-step wizard that is the only way
+  /// to create IP phone devices (TR-064's ExternalRegistration is ignored).
+  ///
+  /// If [onStep] is provided, it is called after each wizard step with the
+  /// step number, a description, and the raw response body — useful for
+  /// debugging the wizard flow.
+  ///
+  /// Returns a [FormResult] indicating success, validation error, or
+  /// 2FA requirement. If [FormTwoFactor] is returned, call [confirmCreate]
+  /// after 2FA confirmation.
+  Future<FormResult> createIpPhone({
+    required String name,
+    required String username,
+    required String password,
+    String? outgoingNumber,
+    bool connectToAll = true,
+    WizardStepCallback? onStep,
+  }) async {
+    _pendingWizardState = null;
+    _pendingOnStep = onStep;
+
+    const wizardConst = <String, String>{
+      'HTMLConfigAssiTyp': 'FonOnly',
+      'FonAssiFromPage': 'fonerweitert',
+    };
+
+    // Step 1: Load wizard start page
+    var stepParams = <String, String>{
+      ...wizardConst,
+      'pagemaster': 'fondevices_list',
+    };
+    final step1Body = await client.fetchPage(
+      page: 'assi_telefon_start',
+      params: stepParams,
+    );
+    onStep?.call(1, 'Load wizard start', stepParams, step1Body);
+
+    // Step 2: Select device type → JSON redirect
+    stepParams = {
+      ...wizardConst,
+      'New_DeviceTyp': 'Fon',
+      'Submit_Next': '',
+      'oldpage': '/assis/assi_telefon.lua',
+    };
+    final step2Body = await client.fetchPage(
+      page: 'assi_telefon_start',
+      params: stepParams,
+    );
+    onStep?.call(2, 'Select device type (JSON redirect)', stepParams, step2Body);
+    final step2Json = jsonDecode(step2Body) as Map<String, dynamic>;
+    final step2Params =
+        (step2Json['params'] as Map<String, dynamic>?)?.map(
+              (k, v) => MapEntry(k, v.toString()),
+            ) ??
+            <String, String>{};
+
+    // Step 3: Load phone wizard → HTML with hidden state fields
+    stepParams = {
+      ...wizardConst,
+      'assicall': '1',
+      ...step2Params,
+    };
+    var html = await client.fetchPage(
+      page: 'assi_telefon',
+      params: stepParams,
+    );
+    var state = _extractHiddenFields(html);
+    onStep?.call(3, 'Load phone wizard', stepParams, html);
+
+    // Step 4: Select port + name (AssiFonConnecting)
+    stepParams = {
+      ...wizardConst,
+      ...state,
+      'assicall': '1',
+      'New_Port': '623',
+      'New_Notation': name,
+      'New_CurrSide': 'AssiFonConnecting',
+      'Submit_Next': '',
+      'oldpage': '/assis/assi_telefon.lua',
+    };
+    html = await client.fetchPage(
+      page: 'assi_telefon',
+      params: stepParams,
+    );
+    state = _extractHiddenFields(html);
+    onStep?.call(4, 'Port + name', stepParams, html);
+
+    // Step 5: Enter credentials (AssiFonIpOption)
+    stepParams = {
+      ...wizardConst,
+      ...state,
+      'assicall': '1',
+      'New_IpUsername': username,
+      'New_IpPassword': password,
+      'New_CurrSide': 'AssiFonIpOption',
+      'Submit_Next': '',
+      'oldpage': '/assis/assi_telefon.lua',
+    };
+    html = await client.fetchPage(
+      page: 'assi_telefon',
+      params: stepParams,
+    );
+    state = _extractHiddenFields(html);
+    onStep?.call(5, 'Credentials', stepParams, html);
+
+    // Determine outgoing number: use provided or parse first from HTML
+    final sipNumber = outgoingNumber ?? _extractFirstOutgoingNumber(html);
+
+    // Step 6: Select outgoing number (AssiFonOutgoing)
+    stepParams = {
+      ...wizardConst,
+      ...state,
+      'assicall': '1',
+      'NewFnc_OutgoingNr': sipNumber,
+      'New_CurrSide': 'AssiFonOutgoing',
+      'Submit_Next': '',
+      'oldpage': '/assis/assi_telefon.lua',
+    };
+    html = await client.fetchPage(
+      page: 'assi_telefon',
+      params: stepParams,
+    );
+    state = _extractHiddenFields(html);
+    onStep?.call(6, 'Outgoing number=$sipNumber', stepParams, html);
+
+    // Step 7: Select incoming numbers (AssiFonIncoming)
+    stepParams = {
+      ...wizardConst,
+      ...state,
+      'assicall': '1',
+      if (connectToAll) 'NewFnc_ConnectToAll': 'T',
+      'New_CurrSide': 'AssiFonIncoming',
+      'Submit_Next': '',
+      'oldpage': '/assis/assi_telefon.lua',
+    };
+    html = await client.fetchPage(
+      page: 'assi_telefon',
+      params: stepParams,
+    );
+    state = _extractHiddenFields(html);
+    onStep?.call(7, 'Incoming numbers', stepParams, html);
+
+    // Step 8: Save (AssiFonSummary)
+    final saveParams = <String, String>{
+      ...wizardConst,
+      ...state,
+      'assicall': '1',
+      'New_CurrSide': 'AssiFonSummary',
+      'Submit_Save': '',
+      'lang': 'de',
+      'oldpage': '/assis/assi_telefon.lua',
+    };
+
+    final resultBody = await client.fetchPage(
+      page: 'assi_telefon',
+      params: saveParams,
+    );
+    onStep?.call(8, 'Save (AssiFonSummary)', saveParams, resultBody);
+    final resultJson = jsonDecode(resultBody) as Map<String, dynamic>;
+    final result = _parseWizardResult(resultJson);
+
+    if (result is FormTwoFactor) {
+      _pendingWizardState = saveParams;
+    }
+
+    return result;
+  }
+
+  /// Re-submit the wizard save step after 2FA confirmation.
+  ///
+  /// Call this after [createIpPhone] returns [FormTwoFactor] and the 2FA
+  /// process completes successfully.
+  Future<FormResult> confirmCreate() async {
+    final state = _pendingWizardState;
+    if (state == null) {
+      throw StateError('No pending wizard state — call createIpPhone() first');
+    }
+    _pendingWizardState = null;
+
+    final confirmParams = <String, String>{
+      ...state,
+      'confirmed': '',
+      'twofactor': '',
+    };
+    final resultBody = await client.fetchPage(
+      page: 'assi_telefon',
+      params: confirmParams,
+    );
+    _pendingOnStep?.call(9, 'Confirm after 2FA', confirmParams, resultBody);
+    _pendingOnStep = null;
+    final resultJson = jsonDecode(resultBody) as Map<String, dynamic>;
+    return _parseWizardResult(resultJson);
+  }
+
+  /// Parse all `<input type="hidden" ...>` tags from wizard HTML.
+  static Map<String, String> _extractHiddenFields(String html) {
+    final fields = <String, String>{};
+    final pattern = RegExp(
+      r'''<input[^>]*type=["']hidden["'][^>]*/?>''',
+      caseSensitive: false,
+    );
+    final namePattern = RegExp(r'''name=["']([^"']*)["']''');
+    final valuePattern = RegExp(r'''value=["']([^"']*)["']''');
+
+    for (final match in pattern.allMatches(html)) {
+      final tag = match.group(0)!;
+      final nameMatch = namePattern.firstMatch(tag);
+      final valueMatch = valuePattern.firstMatch(tag);
+      if (nameMatch != null) {
+        fields[nameMatch.group(1)!] = valueMatch?.group(1) ?? '';
+      }
+    }
+    return fields;
+  }
+
+  /// Extract the first outgoing number option from wizard HTML.
+  static String _extractFirstOutgoingNumber(String html) {
+    // Look for selected option in outgoing number select, or first Sip option
+    final selected = RegExp(
+      r'''<option[^>]*selected[^>]*value=["'](Sip\d+)["']''',
+    ).firstMatch(html);
+    if (selected != null) return selected.group(1)!;
+
+    final first = RegExp(
+      r'''value=["'](Sip\d+)["']''',
+    ).firstMatch(html);
+    return first?.group(1) ?? 'Sip0';
+  }
+
+  FormResult _parseWizardResult(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
+    if (data == null) return const FormOk();
+
+    final submitSave = data['Submit_Save'];
+    if (submitSave == 'saveerror') {
+      final saveerror = data['saveerror'] as Map<String, dynamic>? ?? {};
+      final msg = saveerror['msg'] as String? ?? '';
+      return FormValError(alert: msg, tomark: const []);
+    }
+
+    if (submitSave == 'twofactor') {
+      final methods = data['twofactor'] as String? ?? '';
+      return FormTwoFactor(methods: methods);
+    }
+
+    return const FormOk();
+  }
+
   Map<String, String> _buildFields({
     required int ipIdx,
     required String username,
     required String password,
     required bool fromInet,
-    String? phoneName,
   }) {
     return <String, String>{
       'username': username,
       'password': password,
       'ip_idx': ipIdx.toString(),
       'back_to_page': '/fon_devices/fondevices_list.lua',
-      if (phoneName != null) 'phonename': phoneName,
       if (fromInet) 'from_inet': 'on',
     };
   }

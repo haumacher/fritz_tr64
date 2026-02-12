@@ -15,7 +15,75 @@ void main() async {
   final sipPassword = _generatePassword(16);
   print('Generated SIP password: $sipPassword');
 
-  // Use TR-064 only for read-only operations (no 2FA needed)
+  // Step 1: Create device via web API wizard (supports TOTP 2FA)
+  print('\n--- Creating SIP device via web API wizard ---');
+  final webClient = FritzWebClient(
+    host: host,
+    username: username,
+    password: password,
+  );
+  await webClient.login();
+  print('Logged in, SID: ${webClient.sid}');
+
+  try {
+    final ipPhone = IpPhoneService(webClient);
+    final twoFactor = WebTwoFactor(webClient);
+
+    var result = await ipPhone.createIpPhone(
+      name: 'Test SIP Phone',
+      username: 'testuser',
+      password: sipPassword,
+      onStep: _onWizardStep,
+    );
+
+    result = await _handle2FA(result, twoFactor, () => ipPhone.confirmCreate());
+
+    switch (result) {
+      case FormOk():
+        print('Device created successfully.');
+      case FormValError(:final alert):
+        print('Validation error: $alert');
+        return;
+      case FormTwoFactor():
+        print('2FA was not confirmed.');
+        return;
+    }
+
+    // Optionally enable internet access for the new device
+    final ipIdx = await ipPhone.findIpIdx('testuser');
+    if (ipIdx != null) {
+      final creds = await ipPhone.getCredentials(ipIdx);
+      if (!creds.fromInet) {
+        print('\nEnabling internet access...');
+        var saveResult = await ipPhone.saveCredentials(
+          ipIdx: ipIdx,
+          username: 'testuser',
+          password: sipPassword,
+          fromInet: true,
+        );
+        saveResult = await _handle2FA(saveResult, twoFactor, () {
+          return ipPhone.confirmAndSave(
+            ipIdx: ipIdx,
+            username: 'testuser',
+            password: sipPassword,
+            fromInet: true,
+          );
+        });
+        switch (saveResult) {
+          case FormOk():
+            print('Internet access enabled.');
+          case FormValError(:final alert):
+            print('Failed to enable internet access: $alert');
+          case FormTwoFactor():
+            print('2FA was not confirmed for internet access.');
+        }
+      }
+    }
+  } finally {
+    await webClient.close();
+  }
+
+  // Step 2: Read back and verify via TR-064
   final tr64 = Tr64Client(
     host: host,
     username: username,
@@ -25,89 +93,8 @@ void main() async {
 
   try {
     final voip = tr64.voip()!;
-
-    // Step 1: Check if a leftover test device exists
-    final numberOfClients = await voip.getNumberOfClients();
-    print('Number of existing clients: $numberOfClients');
-
-    bool reusingExisting = false;
-    if (numberOfClients > 0) {
-      final last = await voip.getClient3(numberOfClients - 1);
-      if (last.phoneName == 'Test Device') {
-        print('Found leftover test device at index ${numberOfClients - 1}.');
-        reusingExisting = true;
-      }
-    }
-
-    // Step 2: Create or update device via web API (supports TOTP 2FA)
-    print('\n--- Setting up SIP device via web API ---');
-    final webClient = FritzWebClient(
-      host: host,
-      username: username,
-      password: password,
-    );
-    await webClient.login();
-    print('Logged in, SID: ${webClient.sid}');
-
-    try {
-      final ipPhone = IpPhoneService(webClient);
-      final twoFactor = WebTwoFactor(webClient);
-
-      int ipIdx;
-      if (reusingExisting) {
-        // Find the existing device by username
-        final found = await ipPhone.findIpIdx('testuser');
-        if (found != null) {
-          ipIdx = found;
-          print('Reusing existing device at ip_idx=$ipIdx');
-        } else {
-          // Fallback: create new
-          ipIdx = await ipPhone.getIpPhoneCount();
-          print('Leftover not found by username, creating at ip_idx=$ipIdx');
-        }
-      } else {
-        ipIdx = await ipPhone.getIpPhoneCount();
-        print('Creating new device at ip_idx=$ipIdx');
-      }
-
-      // Submit form: create/update device with internet access enabled
-      print('Submitting form (username=testuser, from_inet=on)...');
-      var result = await ipPhone.saveCredentials(
-        ipIdx: ipIdx,
-        username: 'testuser',
-        password: sipPassword,
-        fromInet: true,
-        phoneName: 'Test Device',
-      );
-
-      result = await _handle2FA(result, twoFactor, () {
-        return ipPhone.confirmAndSave(
-          ipIdx: ipIdx,
-          username: 'testuser',
-          password: sipPassword,
-          fromInet: true,
-          phoneName: 'Test Device',
-        );
-      });
-
-      switch (result) {
-        case FormOk():
-          print('Device saved successfully.');
-        case FormValError(:final alert):
-          print('Validation error: $alert');
-          return;
-        case FormTwoFactor():
-          print('2FA was not confirmed.');
-          return;
-      }
-    } finally {
-      await webClient.close();
-    }
-
-    // Step 3: Read back and verify via TR-064
-    // Re-read client count since we may have created a new one
-    final newCount = await voip.getNumberOfClients();
-    for (int i = 0; i < newCount; i++) {
+    final count = await voip.getNumberOfClients();
+    for (int i = 0; i < count; i++) {
       final c = await voip.getClient3(i);
       if (c.clientUsername == 'testuser') {
         print('\nDevice config (TR-064 read-back):');
@@ -120,9 +107,24 @@ void main() async {
       }
     }
 
-    print('\nDone — check the Fritz!Box web UI to verify internet access.');
+    print('\nDone — check the Fritz!Box web UI to verify the device.');
   } finally {
     tr64.close();
+  }
+}
+
+/// Logs wizard step progress.
+void _onWizardStep(
+  int step,
+  String description,
+  Map<String, String> params,
+  String responseBody,
+) {
+  print('  [Step $step] $description');
+  if (responseBody.trimLeft().startsWith('{')) {
+    print('    $responseBody');
+  } else {
+    print('    (${responseBody.length} bytes HTML)');
   }
 }
 
