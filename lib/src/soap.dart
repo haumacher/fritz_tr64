@@ -40,8 +40,10 @@ class SoapEnvelope {
     required String actionName,
     required String userId,
     Map<String, String> arguments = const {},
+    String? token,
   }) {
-    final header = _initChallengeHeader(userId);
+    var header = _initChallengeHeader(userId);
+    if (token != null) header += _tokenHeader(token);
     return _buildEnvelope(
       serviceType: serviceType,
       actionName: actionName,
@@ -59,8 +61,10 @@ class SoapEnvelope {
     required String authResponse,
     required String realm,
     Map<String, String> arguments = const {},
+    String? token,
   }) {
-    final header = _clientAuthHeader(userId, nonce, authResponse, realm);
+    var header = _clientAuthHeader(userId, nonce, authResponse, realm);
+    if (token != null) header += _tokenHeader(token);
     return _buildEnvelope(
       serviceType: serviceType,
       actionName: actionName,
@@ -119,6 +123,10 @@ class SoapEnvelope {
         '<UserID>$userId</UserID>'
         '<Realm>$realm</Realm>'
         '</h:ClientAuth>';
+  }
+
+  static String _tokenHeader(String token) {
+    return '<avm:token xmlns:avm="avm.de" s:mustUnderstand="1">$token</avm:token>';
   }
 
   static String _xmlEscape(String value) {

@@ -20,6 +20,12 @@ class Tr64Client {
   http.Client? _httpClient;
   DeviceDescription? _description;
 
+  /// Token for second-factor authentication.
+  ///
+  /// When set, this token is included as an `<avm:token>` SOAP header
+  /// in all subsequent requests per AVM TR-064 Authentication spec (section 6.4).
+  String? secondFactorToken;
+
   /// Create a TR-064 client.
   ///
   /// [host] is the Fritz!Box hostname or IP address.
@@ -109,6 +115,7 @@ class Tr64Client {
       actionName: actionName,
       userId: _auth.userId,
       arguments: arguments,
+      token: secondFactorToken,
     );
 
     final initResponse = await _postSoap(client, url, soapAction, initEnvelope);
@@ -182,6 +189,7 @@ class Tr64Client {
     _httpClient?.close();
     _httpClient = null;
     _auth.state.clear();
+    secondFactorToken = null;
   }
 
   // Internal callback for service wrappers
@@ -220,6 +228,7 @@ class Tr64Client {
       authResponse: authResponse,
       realm: _auth.state.realm!,
       arguments: arguments,
+      token: secondFactorToken,
     );
 
     final httpResponse = await _postSoap(client, url, soapAction, envelope);
