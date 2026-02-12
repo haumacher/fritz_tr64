@@ -18,3 +18,8 @@ export 'src/services/tam.dart';
 export 'src/services/voip.dart';
 export 'src/services/x_auth.dart';
 export 'src/soap.dart' show SoapEnvelope, SoapResponse, SoapFaultException;
+
+// Web API (lua endpoints)
+export 'src/web/web_client.dart';
+export 'src/web/web_two_factor.dart';
+export 'src/web/ip_phone_service.dart';

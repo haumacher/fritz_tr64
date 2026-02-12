@@ -235,7 +235,14 @@ class VoIPClient {
   final String clientId;
   final String outGoingNumber;
   final List<VoIPNumber> inComingNumbers;
+  /// Whether external (internet) registration is enabled.
+  ///
+  /// **Warning:** This value is read from the TR-064 response but has been
+  /// **ignored by Fritz!Box since 2015** per AVM spec. The Fritz!Box always
+  /// returns `false` regardless of the actual web UI setting.
+  /// Use [IpPhoneService] from the web API to read or set this reliably.
   final bool externalRegistration;
+
   final String internalNumber;
   final bool delayedCallNotification;
 
@@ -643,6 +650,11 @@ class VoIPService extends Tr64Service {
   }
 
   /// Configure a SIP client with extended options (SetClient3).
+  ///
+  /// **Warning:** The [externalRegistration] parameter has been **ignored by
+  /// Fritz!Box since 2015** per AVM spec. Setting it to `true` has no effect.
+  /// To enable internet access for a SIP device, use [IpPhoneService] from
+  /// the web API instead.
   Future<void> setClient3({
     required int clientIndex,
     required String password,

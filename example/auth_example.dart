@@ -37,6 +37,8 @@ void main() async {
           print('  - button: press any button on the device');
         case AuthMethodDtmf(:final sequence):
           print('  - dtmf: enter $sequence on a connected phone');
+        case AuthMethodTotp():
+          print('  - totp: enter code from Authenticator app');
         case AuthMethodUnknown(:final raw):
           print('  - unknown: $raw');
       }

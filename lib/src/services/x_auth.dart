@@ -40,7 +40,7 @@ enum SecondFactorState {
 /// A second-factor authentication method.
 ///
 /// The Fritz!Box reports available methods as a comma-separated string.
-/// Known method types are `button` and `dtmf;<sequence>`.
+/// Known method types are `button`, `dtmf;<sequence>`, and `googleauth`.
 sealed class AuthMethod {
   const AuthMethod();
 
@@ -55,6 +55,7 @@ sealed class AuthMethod {
       if (trimmed.startsWith('dtmf;')) {
         return AuthMethodDtmf(trimmed.substring(5));
       }
+      if (trimmed == 'googleauth') return const AuthMethodTotp();
       return AuthMethodUnknown(trimmed);
     }).toList();
   }
@@ -77,6 +78,17 @@ class AuthMethodDtmf extends AuthMethod {
 
   @override
   String toString() => 'dtmf;$sequence';
+}
+
+/// TOTP (Google Authenticator) authentication method.
+///
+/// This method is only available via the Fritz!Box web API (lua endpoints).
+/// It is not supported by the TR-064 SOAP protocol.
+class AuthMethodTotp extends AuthMethod {
+  const AuthMethodTotp();
+
+  @override
+  String toString() => 'googleauth';
 }
 
 /// An unrecognised authentication method.
