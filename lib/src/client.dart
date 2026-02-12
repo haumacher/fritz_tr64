@@ -88,6 +88,9 @@ class Tr64Client {
         arguments: arguments,
       );
 
+      // Auth failed (wrong password or stale nonce)
+      if (response.fault != null) throw response.fault!;
+
       // If we got a next challenge, update state for the next call
       if (response.challenge != null) {
         _auth.updateFromChallenge(
@@ -130,6 +133,9 @@ class Tr64Client {
       actionName: actionName,
       arguments: arguments,
     );
+
+    // Auth failed (wrong password)
+    if (authResult.fault != null) throw authResult.fault!;
 
     // Update nonce for next call
     if (authResult.challenge != null) {

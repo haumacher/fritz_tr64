@@ -139,7 +139,14 @@ class SoapResponse {
   /// Challenge info from the response header (if present).
   final ChallengeInfo? challenge;
 
-  SoapResponse({required this.arguments, this.challenge});
+  /// The SOAP fault, if the response was a fault.
+  ///
+  /// This is only set when a fault is returned alongside a challenge
+  /// (e.g. the InitChallenge step). Faults without a challenge are thrown
+  /// immediately as [SoapFaultException].
+  final SoapFaultException? fault;
+
+  SoapResponse({required this.arguments, this.challenge, this.fault});
 }
 
 /// Challenge/auth info from SOAP response headers.
@@ -201,23 +208,31 @@ SoapResponse parseSoapResponse(String xml) {
     fault.addAll(bodyElement.findAllElements('s:Fault'));
   }
   if (fault.isNotEmpty) {
-    // If a challenge was included alongside the fault (InitChallenge flow),
-    // return it instead of throwing so the caller can proceed with auth.
-    if (challenge != null) {
-      return SoapResponse(arguments: const {}, challenge: challenge);
-    }
-
     final faultElement = fault.first;
     final faultCode =
         _getElementText(faultElement, 'faultcode') ?? 'Unknown';
     final faultString =
         _getElementText(faultElement, 'faultstring') ?? 'Unknown error';
     final detail = _getElementText(faultElement, 'detail');
-    throw SoapFaultException(
+    final exception = SoapFaultException(
       faultCode: faultCode,
       faultString: faultString,
       detail: detail,
     );
+
+    // If a challenge was included alongside the fault (InitChallenge flow),
+    // return it instead of throwing so the caller can proceed with auth.
+    // The fault is preserved so callers can distinguish a failed ClientAuth
+    // (fault + NextChallenge) from the initial challenge handshake.
+    if (challenge != null) {
+      return SoapResponse(
+        arguments: const {},
+        challenge: challenge,
+        fault: exception,
+      );
+    }
+
+    throw exception;
   }
 
   // Extract body arguments - find the action response element
