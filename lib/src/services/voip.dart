@@ -666,6 +666,9 @@ class VoIPService extends Tr64Service {
   /// Configure a SIP client with username (SetClient4).
   ///
   /// Returns the internal number assigned to the client.
+  ///
+  /// Note: `SetClient4` does not support `ExternalRegistration`. To enable
+  /// internet registration, call [setClient3] on the same index afterwards.
   Future<String> setClient4({
     required int clientIndex,
     required String password,
