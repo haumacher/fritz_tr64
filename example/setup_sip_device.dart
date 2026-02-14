@@ -12,7 +12,12 @@ void main() async {
   final password = env['FRITZBOX_PASSWORD']!;
 
   // SIP device credentials
-  const sipUsername = 'testuser';
+  stdout.write('SIP username: ');
+  final sipUsername = stdin.readLineSync()?.trim() ?? '';
+  if (sipUsername.isEmpty) {
+    print('Username must not be empty.');
+    return;
+  }
   final sipPassword = _generatePassword(16);
   print('Generated SIP password: $sipPassword');
 
