@@ -267,7 +267,6 @@ class IpPhoneService {
       ...wizardConst,
       ...state,
       'assicall': '1',
-      'New_Port': '623',
       'New_Notation': name,
       'New_CurrSide': 'AssiFonConnecting',
       'Submit_Next': '',
