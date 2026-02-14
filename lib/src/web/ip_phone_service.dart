@@ -291,7 +291,11 @@ class IpPhoneService {
     onStep?.call(WizardStep.loadPhoneWizard, stepParams, html);
 
     // Step 4: Select port + name (AssiFonConnecting)
-    final ipPhonePort = _extractIpPhonePort(html);
+    final freeIdx = state['Old_FreeIpPhoneTsvIndex'];
+    if (freeIdx == null) {
+      throw StateError('Old_FreeIpPhoneTsvIndex not found in wizard HTML');
+    }
+    final ipPhonePort = (620 + int.parse(freeIdx)).toString();
     stepParams = {
       ...wizardConst,
       ...state,
@@ -437,14 +441,6 @@ class IpPhoneService {
     return fields;
   }
 
-  /// Extract the first available IP phone port (620-629) from wizard HTML.
-  static String _extractIpPhonePort(String html) {
-    final match = RegExp(
-      r'''value=["'](6[2][0-9])["']''',
-    ).firstMatch(html);
-    if (match != null) return match.group(1)!;
-    throw StateError('No free IP phone port found in wizard HTML');
-  }
 
   /// Extract the first outgoing number option from wizard HTML.
   static String _extractFirstOutgoingNumber(String html) {
