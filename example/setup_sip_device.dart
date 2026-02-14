@@ -16,6 +16,9 @@ void main() async {
   final sipPassword = _generatePassword(16);
   print('Generated SIP password: $sipPassword');
 
+  await _printSipClient(host, username, password, sipUsername,
+      header: '--- SIP client before creation ---');
+
   // Step 1: Create device via web API wizard (supports TOTP 2FA)
   print('\n--- Creating SIP device via web API wizard ---');
   final webClient = FritzWebClient(
@@ -85,30 +88,38 @@ void main() async {
   }
 
   // Step 2: Read back and verify via TR-064
-  final tr64 = Tr64Client(
-    host: host,
-    username: username,
-    password: password,
-  );
-  await tr64.connect();
+  await _printSipClient(host, username, password, sipUsername,
+      header: '--- SIP client after creation ---');
 
+  print('\nDone — check the Fritz!Box web UI to verify the device.');
+}
+
+/// Looks up a SIP client by username via TR-064 and prints its details.
+Future<void> _printSipClient(
+  String host,
+  String username,
+  String password,
+  String sipUsername, {
+  required String header,
+}) async {
+  print('\n$header');
+  final tr64 = Tr64Client(host: host, username: username, password: password);
+  await tr64.connect();
   try {
     final voip = tr64.voip()!;
     final count = await voip.getNumberOfClients();
     for (int i = 0; i < count; i++) {
       final c = await voip.getClient3(i);
       if (c.clientUsername == sipUsername) {
-        print('\nDevice config (TR-064 read-back):');
         print('  ClientIndex: ${c.clientIndex}');
         print('  Username: ${c.clientUsername}');
         print('  PhoneName: ${c.phoneName}');
         print('  External registration: ${c.externalRegistration}');
         print('  Internal number: ${c.internalNumber}');
-        break;
+        return;
       }
     }
-
-    print('\nDone — check the Fritz!Box web UI to verify the device.');
+    print('  SIP client "$sipUsername" not found.');
   } finally {
     tr64.close();
   }
