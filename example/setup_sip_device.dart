@@ -11,7 +11,8 @@ void main() async {
   final username = env['FRITZBOX_USERNAME']!;
   final password = env['FRITZBOX_PASSWORD']!;
 
-  // Generate a secure random password for the SIP device
+  // SIP device credentials
+  const sipUsername = 'testuser';
   final sipPassword = _generatePassword(16);
   print('Generated SIP password: $sipPassword');
 
@@ -31,7 +32,7 @@ void main() async {
 
     var result = await ipPhone.createIpPhone(
       name: 'Test SIP Phone',
-      username: 'testuser',
+      username: sipUsername,
       password: sipPassword,
       onStep: _onWizardStep,
     );
@@ -50,21 +51,21 @@ void main() async {
     }
 
     // Optionally enable internet access for the new device
-    final ipIdx = await ipPhone.findIpIdx('testuser');
+    final ipIdx = await ipPhone.findIpIdx(sipUsername);
     if (ipIdx != null) {
       final creds = await ipPhone.getCredentials(ipIdx);
       if (!creds.fromInet) {
         print('\nEnabling internet access...');
         var saveResult = await ipPhone.saveCredentials(
           ipIdx: ipIdx,
-          username: 'testuser',
+          username: sipUsername,
           password: sipPassword,
           fromInet: true,
         );
         saveResult = await _handle2FA(saveResult, twoFactor, () {
           return ipPhone.confirmAndSave(
             ipIdx: ipIdx,
-            username: 'testuser',
+            username: sipUsername,
             password: sipPassword,
             fromInet: true,
           );
@@ -96,7 +97,7 @@ void main() async {
     final count = await voip.getNumberOfClients();
     for (int i = 0; i < count; i++) {
       final c = await voip.getClient3(i);
-      if (c.clientUsername == 'testuser') {
+      if (c.clientUsername == sipUsername) {
         print('\nDevice config (TR-064 read-back):');
         print('  ClientIndex: ${c.clientIndex}');
         print('  Username: ${c.clientUsername}');
