@@ -64,14 +64,42 @@ class FormTwoFactor extends FormResult {
   String toString() => 'FormTwoFactor($methods)';
 }
 
+/// Identifies a step in the IP phone creation wizard.
+enum WizardStep {
+  /// Load the wizard start page.
+  loadWizardStart,
+
+  /// Select the device type (→ JSON redirect).
+  selectDeviceType,
+
+  /// Load the phone wizard HTML with hidden state fields.
+  loadPhoneWizard,
+
+  /// Select port and display name.
+  selectPortAndName,
+
+  /// Enter SIP username and password.
+  enterCredentials,
+
+  /// Select the outgoing phone number.
+  selectOutgoingNumber,
+
+  /// Select which incoming numbers to accept.
+  selectIncomingNumbers,
+
+  /// Submit the wizard to save the new device.
+  save,
+
+  /// Re-submit after two-factor authentication confirmation.
+  confirmAfter2FA,
+}
+
 /// Callback for wizard step progress reporting.
 ///
-/// Called after each wizard step with the 1-based [step] number,
-/// a short [description], the [params] that were sent, and the raw
-/// [responseBody] from the Fritz!Box.
+/// Called after each wizard step with the [step] identity, the [params]
+/// that were sent, and the raw [responseBody] from the Fritz!Box.
 typedef WizardStepCallback = void Function(
-  int step,
-  String description,
+  WizardStep step,
   Map<String, String> params,
   String responseBody,
 );
@@ -228,7 +256,7 @@ class IpPhoneService {
       page: 'assi_telefon_start',
       params: stepParams,
     );
-    onStep?.call(1, 'Load wizard start', stepParams, step1Body);
+    onStep?.call(WizardStep.loadWizardStart, stepParams, step1Body);
 
     // Step 2: Select device type → JSON redirect
     stepParams = {
@@ -241,7 +269,7 @@ class IpPhoneService {
       page: 'assi_telefon_start',
       params: stepParams,
     );
-    onStep?.call(2, 'Select device type (JSON redirect)', stepParams, step2Body);
+    onStep?.call(WizardStep.selectDeviceType, stepParams, step2Body);
     final step2Json = jsonDecode(step2Body) as Map<String, dynamic>;
     final step2Params =
         (step2Json['params'] as Map<String, dynamic>?)?.map(
@@ -260,7 +288,7 @@ class IpPhoneService {
       params: stepParams,
     );
     var state = _extractHiddenFields(html);
-    onStep?.call(3, 'Load phone wizard', stepParams, html);
+    onStep?.call(WizardStep.loadPhoneWizard, stepParams, html);
 
     // Step 4: Select port + name (AssiFonConnecting)
     final ipPhonePort = _extractIpPhonePort(html);
@@ -279,7 +307,7 @@ class IpPhoneService {
       params: stepParams,
     );
     state = _extractHiddenFields(html);
-    onStep?.call(4, 'Port + name', stepParams, html);
+    onStep?.call(WizardStep.selectPortAndName, stepParams, html);
 
     // Step 5: Enter credentials (AssiFonIpOption)
     stepParams = {
@@ -297,7 +325,7 @@ class IpPhoneService {
       params: stepParams,
     );
     state = _extractHiddenFields(html);
-    onStep?.call(5, 'Credentials', stepParams, html);
+    onStep?.call(WizardStep.enterCredentials, stepParams, html);
 
     // Determine outgoing number: use provided or parse first from HTML
     final sipNumber = outgoingNumber ?? _extractFirstOutgoingNumber(html);
@@ -317,7 +345,7 @@ class IpPhoneService {
       params: stepParams,
     );
     state = _extractHiddenFields(html);
-    onStep?.call(6, 'Outgoing number=$sipNumber', stepParams, html);
+    onStep?.call(WizardStep.selectOutgoingNumber, stepParams, html);
 
     // Step 7: Select incoming numbers (AssiFonIncoming)
     stepParams = {
@@ -334,7 +362,7 @@ class IpPhoneService {
       params: stepParams,
     );
     state = _extractHiddenFields(html);
-    onStep?.call(7, 'Incoming numbers', stepParams, html);
+    onStep?.call(WizardStep.selectIncomingNumbers, stepParams, html);
 
     // Step 8: Save (AssiFonSummary)
     final saveParams = <String, String>{
@@ -351,7 +379,7 @@ class IpPhoneService {
       page: 'assi_telefon',
       params: saveParams,
     );
-    onStep?.call(8, 'Save (AssiFonSummary)', saveParams, resultBody);
+    onStep?.call(WizardStep.save, saveParams, resultBody);
     final resultJson = jsonDecode(resultBody) as Map<String, dynamic>;
     final result = _parseWizardResult(resultJson);
 
@@ -382,7 +410,7 @@ class IpPhoneService {
       page: 'assi_telefon',
       params: confirmParams,
     );
-    _pendingOnStep?.call(9, 'Confirm after 2FA', confirmParams, resultBody);
+    _pendingOnStep?.call(WizardStep.confirmAfter2FA, confirmParams, resultBody);
     _pendingOnStep = null;
     final resultJson = jsonDecode(resultBody) as Map<String, dynamic>;
     return _parseWizardResult(resultJson);

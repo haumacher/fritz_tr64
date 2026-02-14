@@ -130,14 +130,26 @@ Future<void> _printSipClient(
   }
 }
 
+/// Human-readable label for a wizard step.
+String _stepLabel(WizardStep step) => switch (step) {
+      WizardStep.loadWizardStart => 'Load wizard start',
+      WizardStep.selectDeviceType => 'Select device type',
+      WizardStep.loadPhoneWizard => 'Load phone wizard',
+      WizardStep.selectPortAndName => 'Port + name',
+      WizardStep.enterCredentials => 'Credentials',
+      WizardStep.selectOutgoingNumber => 'Outgoing number',
+      WizardStep.selectIncomingNumbers => 'Incoming numbers',
+      WizardStep.save => 'Save',
+      WizardStep.confirmAfter2FA => 'Confirm after 2FA',
+    };
+
 /// Logs wizard step progress.
 void _onWizardStep(
-  int step,
-  String description,
+  WizardStep step,
   Map<String, String> params,
   String responseBody,
 ) {
-  print('  [Step $step] $description');
+  print('  [${step.name}] ${_stepLabel(step)}');
   if (responseBody.trimLeft().startsWith('{')) {
     print('    $responseBody');
   } else {
