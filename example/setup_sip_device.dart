@@ -147,9 +147,13 @@ String _stepLabel(WizardStep step) => switch (step) {
 void _onWizardStep(
   WizardStep step,
   Map<String, String> params,
+  Map<String, String> state,
   String responseBody,
 ) {
   print('  [${step.name}] ${_stepLabel(step)}');
+  if (state.isNotEmpty) {
+    print('    state: $state');
+  }
   if (responseBody.trimLeft().startsWith('{')) {
     print('    $responseBody');
   } else {

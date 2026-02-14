@@ -97,10 +97,13 @@ enum WizardStep {
 /// Callback for wizard step progress reporting.
 ///
 /// Called after each wizard step with the [step] identity, the [params]
-/// that were sent, and the raw [responseBody] from the Fritz!Box.
+/// that were sent, the hidden-field [state] extracted from the response
+/// (empty for non-HTML responses), and the raw [responseBody] from the
+/// Fritz!Box.
 typedef WizardStepCallback = void Function(
   WizardStep step,
   Map<String, String> params,
+  Map<String, String> state,
   String responseBody,
 );
 
@@ -256,7 +259,7 @@ class IpPhoneService {
       page: 'assi_telefon_start',
       params: stepParams,
     );
-    onStep?.call(WizardStep.loadWizardStart, stepParams, step1Body);
+    onStep?.call(WizardStep.loadWizardStart, stepParams, const {}, step1Body);
 
     // Step 2: Select device type → JSON redirect
     stepParams = {
@@ -269,7 +272,7 @@ class IpPhoneService {
       page: 'assi_telefon_start',
       params: stepParams,
     );
-    onStep?.call(WizardStep.selectDeviceType, stepParams, step2Body);
+    onStep?.call(WizardStep.selectDeviceType, stepParams, const {}, step2Body);
     final step2Json = jsonDecode(step2Body) as Map<String, dynamic>;
     final step2Params =
         (step2Json['params'] as Map<String, dynamic>?)?.map(
@@ -288,7 +291,7 @@ class IpPhoneService {
       params: stepParams,
     );
     var state = _extractHiddenFields(html);
-    onStep?.call(WizardStep.loadPhoneWizard, stepParams, html);
+    onStep?.call(WizardStep.loadPhoneWizard, stepParams, state, html);
 
     // Step 4: Select port + name (AssiFonConnecting)
     final freeIdx = state['Old_FreeIpPhoneTsvIndex'];
@@ -311,7 +314,7 @@ class IpPhoneService {
       params: stepParams,
     );
     state = _extractHiddenFields(html);
-    onStep?.call(WizardStep.selectPortAndName, stepParams, html);
+    onStep?.call(WizardStep.selectPortAndName, stepParams, state, html);
 
     // Step 5: Enter credentials (AssiFonIpOption)
     stepParams = {
@@ -329,7 +332,7 @@ class IpPhoneService {
       params: stepParams,
     );
     state = _extractHiddenFields(html);
-    onStep?.call(WizardStep.enterCredentials, stepParams, html);
+    onStep?.call(WizardStep.enterCredentials, stepParams, state, html);
 
     // Determine outgoing number: use provided or parse first from HTML
     final sipNumber = outgoingNumber ?? _extractFirstOutgoingNumber(html);
@@ -349,7 +352,7 @@ class IpPhoneService {
       params: stepParams,
     );
     state = _extractHiddenFields(html);
-    onStep?.call(WizardStep.selectOutgoingNumber, stepParams, html);
+    onStep?.call(WizardStep.selectOutgoingNumber, stepParams, state, html);
 
     // Step 7: Select incoming numbers (AssiFonIncoming)
     stepParams = {
@@ -366,7 +369,7 @@ class IpPhoneService {
       params: stepParams,
     );
     state = _extractHiddenFields(html);
-    onStep?.call(WizardStep.selectIncomingNumbers, stepParams, html);
+    onStep?.call(WizardStep.selectIncomingNumbers, stepParams, state, html);
 
     // Step 8: Save (AssiFonSummary)
     final saveParams = <String, String>{
@@ -383,7 +386,7 @@ class IpPhoneService {
       page: 'assi_telefon',
       params: saveParams,
     );
-    onStep?.call(WizardStep.save, saveParams, resultBody);
+    onStep?.call(WizardStep.save, saveParams, const {}, resultBody);
     final resultJson = jsonDecode(resultBody) as Map<String, dynamic>;
     final result = _parseWizardResult(resultJson);
 
@@ -414,7 +417,7 @@ class IpPhoneService {
       page: 'assi_telefon',
       params: confirmParams,
     );
-    _pendingOnStep?.call(WizardStep.confirmAfter2FA, confirmParams, resultBody);
+    _pendingOnStep?.call(WizardStep.confirmAfter2FA, confirmParams, const {}, resultBody);
     _pendingOnStep = null;
     final resultJson = jsonDecode(resultBody) as Map<String, dynamic>;
     return _parseWizardResult(resultJson);
