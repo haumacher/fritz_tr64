@@ -227,9 +227,13 @@ class IpPhoneService {
   /// This drives the `assi_telefon` multi-step wizard that is the only way
   /// to create IP phone devices (TR-064's ExternalRegistration is ignored).
   ///
+  /// [outgoingNumber] selects the outgoing phone number by index (0 = first
+  /// configured number, 1 = second, etc.). Use `-1` for no outgoing number.
+  /// When `null` (default), the first available number is used.
+  ///
   /// If [onStep] is provided, it is called after each wizard step with the
-  /// step number, a description, and the raw response body — useful for
-  /// debugging the wizard flow.
+  /// step identity, params, extracted state, and the raw response body —
+  /// useful for debugging the wizard flow.
   ///
   /// Returns a [FormResult] indicating success, validation error, or
   /// 2FA requirement. If [FormTwoFactor] is returned, call [confirmCreate]
@@ -238,7 +242,7 @@ class IpPhoneService {
     required String name,
     required String username,
     required String password,
-    String? outgoingNumber,
+    int? outgoingNumber,
     bool connectToAll = true,
     WizardStepCallback? onStep,
   }) async {
@@ -334,15 +338,19 @@ class IpPhoneService {
     state = _extractHiddenFields(html);
     onStep?.call(WizardStep.enterCredentials, stepParams, state, html);
 
-    // Determine outgoing number: use provided or parse first from HTML
-    final sipNumber = outgoingNumber ?? _extractFirstOutgoingNumber(html);
+    // Determine outgoing number: -1 = none, null = first, >=0 = Sip<n>
+    final sipNumber = switch (outgoingNumber) {
+      -1 => '',
+      null => _extractFirstOutgoingNumber(html),
+      _ => 'Sip$outgoingNumber',
+    };
 
     // Step 6: Select outgoing number (AssiFonOutgoing)
     stepParams = {
       ...wizardConst,
       ...state,
       'assicall': '1',
-      'NewFnc_OutgoingNr': sipNumber,
+      if (sipNumber.isNotEmpty) 'NewFnc_OutgoingNr': sipNumber,
       'New_CurrSide': 'AssiFonOutgoing',
       'Submit_Next': '',
       'oldpage': '/assis/assi_telefon.lua',

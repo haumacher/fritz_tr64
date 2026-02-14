@@ -21,6 +21,10 @@ void main() async {
   final sipPassword = _generatePassword(16);
   print('Generated SIP password: $sipPassword');
 
+  stdout.write('Outgoing number index (-1=none, 0=first, empty=default): ');
+  final outInput = stdin.readLineSync()?.trim() ?? '';
+  final int? outgoingNumber = outInput.isEmpty ? null : int.parse(outInput);
+
   await _printSipClient(host, username, password, sipUsername,
       header: '--- SIP client before creation ---');
 
@@ -42,6 +46,7 @@ void main() async {
       name: 'Test SIP Phone',
       username: sipUsername,
       password: sipPassword,
+      outgoingNumber: outgoingNumber,
       onStep: _onWizardStep,
     );
 
