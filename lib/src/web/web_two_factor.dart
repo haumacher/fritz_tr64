@@ -57,9 +57,14 @@ class WebTwoFactor {
 
   /// Parse a 2FA methods string into [AuthMethod] instances.
   ///
-  /// This is a convenience wrapper around [AuthMethod.parseAll].
+  /// The web API reports DTMF methods as `dtmf;<code>` where `<code>` is the
+  /// raw confirmation code. The user must dial `*1<code>` on a connected phone,
+  /// so this method prepends the `*1` prefix to the DTMF sequence.
   List<AuthMethod> parseMethods(String methodsStr) {
-    return AuthMethod.parseAll(methodsStr);
+    return AuthMethod.parseAll(methodsStr).map((m) {
+      if (m is AuthMethodDtmf) return AuthMethodDtmf('*1${m.sequence}');
+      return m;
+    }).toList();
   }
 
   /// Query Google Authenticator (TOTP) availability.
