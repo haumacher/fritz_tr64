@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.0
+
+### Added
+
+- Fritz!Box web API (Lua) client for direct HTTP interaction beyond TR-064
+- TOTP-based two-factor authentication support for web API sessions
+- IP phone creation via the `assi_telefon` wizard (multi-step stateful flow)
+- `WizardStep` enum for type-safe wizard step handling
+- Second-factor authentication token support in SOAP headers
+- `VoipService.getExistingVoIPNumbers()` for listing provisioned SIP numbers
+- `setup_sip_device` example demonstrating end-to-end IP phone provisioning
+
+### Changed
+
+- `createIpPhone()` accepts outgoing number as `int` index instead of raw string
+
 ## 0.2.1
 
 ### Added
